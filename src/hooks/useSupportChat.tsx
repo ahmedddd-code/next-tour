@@ -1,56 +1,97 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
-const STORAGE_KEY = 'nexttour:support-chats:v1';
-const SESSION_KEY = 'nexttour:support-conversation-id';
+const CREDENTIALS_KEY = 'nexttour:support-chat-credentials:v1';
+const ADMIN_PASSWORD = 'nexttour123';
+type ChatCredentials = { conversationId: string; accessToken: string };
 
 export type SupportMessage = { id: string; role: 'user' | 'manager' | 'system'; text: string; createdAt: string };
 export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; messages: SupportMessage[] };
 type ContextValue = {
   conversations: SupportConversation[];
   currentConversationId: string | null;
-  sendUserMessage: (text: string) => void;
-  sendManagerMessage: (conversationId: string, text: string) => void;
-  toggleConversationStatus: (conversationId: string) => void;
-  deleteConversation: (conversationId: string) => void;
+  error: string;
+  sendUserMessage: (text: string) => Promise<void>;
+  sendManagerMessage: (conversationId: string, text: string) => Promise<void>;
+  toggleConversationStatus: (conversationId: string) => Promise<void>;
+  deleteConversation: (conversationId: string) => Promise<void>;
 };
 
 const SupportChatContext = createContext<ContextValue | null>(null);
 
-function loadConversations() {
-  try { const saved = localStorage.getItem(STORAGE_KEY); return saved ? JSON.parse(saved) as SupportConversation[] : []; }
-  catch { return []; }
+function loadCredentials() {
+  try { const saved = localStorage.getItem(CREDENTIALS_KEY); return saved ? JSON.parse(saved) as ChatCredentials : null; }
+  catch { return null; }
+}
+
+async function invoke(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke('support-chat', { body });
+  if (error) throw error;
+  if (data?.error) throw new Error(String(data.error));
+  return data as Record<string, unknown>;
 }
 
 export function SupportChatProvider({ children }: { children: ReactNode }) {
-  const [conversations, setConversations] = useState<SupportConversation[]>(loadConversations);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(() => sessionStorage.getItem(SESSION_KEY));
+  const [conversations, setConversations] = useState<SupportConversation[]>([]);
+  const [credentials, setCredentials] = useState<ChatCredentials | null>(loadCredentials);
+  const [error, setError] = useState('');
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations)); }, [conversations]);
-  useEffect(() => {
-    const sync = (event: StorageEvent) => { if (event.key === STORAGE_KEY) setConversations(loadConversations()); };
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
+  const loadUserConversation = useCallback(async (chatCredentials = credentials) => {
+    if (!isSupabaseConfigured || !chatCredentials) return;
+    try {
+      const data = await invoke({ action: 'user_load', ...chatCredentials });
+      const conversation = data.conversation as SupportConversation | null;
+      setConversations(conversation ? [conversation] : []);
+      setError('');
+    } catch { setError('Не удалось обновить чат. Проверьте интернет-соединение.'); }
+  }, [credentials]);
+
+  const loadAdminConversations = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const data = await invoke({ action: 'admin_list', adminPassword: ADMIN_PASSWORD });
+      setConversations((data.conversations as SupportConversation[]) ?? []);
+      setError('');
+    } catch { setError('Не удалось загрузить обращения клиентов.'); }
   }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (sessionStorage.getItem('nexttour:admin-authenticated') === 'true') void loadAdminConversations();
+      else void loadUserConversation();
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 4000);
+    return () => window.clearInterval(timer);
+  }, [loadAdminConversations, loadUserConversation]);
 
   const value = useMemo<ContextValue>(() => ({
     conversations,
-    currentConversationId,
-    sendUserMessage: text => {
-      const now = new Date().toISOString();
-      const id = currentConversationId ?? `chat-${crypto.randomUUID()}`;
-      if (!currentConversationId) { sessionStorage.setItem(SESSION_KEY, id); setCurrentConversationId(id); }
-      setConversations(current => {
-        const existing = current.find(conversation => conversation.id === id);
-        const userMessage: SupportMessage = { id: crypto.randomUUID(), role: 'user', text, createdAt: now };
-        if (existing) return current.map(conversation => conversation.id === id ? { ...conversation, status: 'open', updatedAt: now, messages: [...conversation.messages, userMessage] } : conversation);
-        const systemMessage: SupportMessage = { id: crypto.randomUUID(), role: 'system', text: 'Сообщение передано менеджеру. Обычно мы отвечаем в течение 5 минут.', createdAt: now };
-        return [{ id, status: 'open', createdAt: now, updatedAt: now, messages: [userMessage, systemMessage] }, ...current];
-      });
+    currentConversationId: credentials?.conversationId ?? null,
+    error,
+    sendUserMessage: async text => {
+      try {
+        const data = await invoke({ action: 'user_send', text, ...credentials });
+        const nextCredentials: ChatCredentials = { conversationId: String(data.conversationId), accessToken: String(data.accessToken) };
+        localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(nextCredentials));
+        setCredentials(nextCredentials);
+        await loadUserConversation(nextCredentials);
+      } catch { setError('Сообщение не отправлено. Попробуйте ещё раз.'); }
     },
-    sendManagerMessage: (conversationId, text) => setConversations(current => current.map(conversation => conversation.id === conversationId ? { ...conversation, status: 'open', updatedAt: new Date().toISOString(), messages: [...conversation.messages, { id: crypto.randomUUID(), role: 'manager', text, createdAt: new Date().toISOString() }] } : conversation)),
-    toggleConversationStatus: conversationId => setConversations(current => current.map(conversation => conversation.id === conversationId ? { ...conversation, status: conversation.status === 'open' ? 'closed' : 'open' } : conversation)),
-    deleteConversation: conversationId => setConversations(current => current.filter(conversation => conversation.id !== conversationId)),
-  }), [conversations, currentConversationId]);
+    sendManagerMessage: async (conversationId, text) => {
+      try { await invoke({ action: 'admin_send', adminPassword: ADMIN_PASSWORD, conversationId, text }); await loadAdminConversations(); }
+      catch { setError('Ответ не отправлен. Попробуйте ещё раз.'); }
+    },
+    toggleConversationStatus: async conversationId => {
+      const conversation = conversations.find(item => item.id === conversationId);
+      try { await invoke({ action: 'admin_status', adminPassword: ADMIN_PASSWORD, conversationId, status: conversation?.status === 'open' ? 'closed' : 'open' }); await loadAdminConversations(); }
+      catch { setError('Не удалось изменить статус диалога.'); }
+    },
+    deleteConversation: async conversationId => {
+      try { await invoke({ action: 'admin_delete', adminPassword: ADMIN_PASSWORD, conversationId }); await loadAdminConversations(); }
+      catch { setError('Не удалось удалить диалог.'); }
+    },
+  }), [conversations, credentials, error, loadAdminConversations, loadUserConversation]);
 
   return <SupportChatContext.Provider value={value}>{children}</SupportChatContext.Provider>;
 }
