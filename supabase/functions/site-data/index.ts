@@ -26,9 +26,20 @@ Deno.serve(async request => {
       if (error) throw error; return json({ reviews: data ?? [] });
     }
     if (action === 'create_booking') {
-      const data = body.data as Record<string, unknown>;
+      const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+      const { data: authData } = await db.auth.getUser(token);
+      if (!authData.user) return json({ error: 'Войдите в аккаунт для бронирования' }, 401);
+      const data = { ...(body.data as Record<string, unknown>), userId: authData.user.id };
       if (!data || typeof data.name !== 'string' || typeof data.phone !== 'string') return json({ error: 'Заполните имя и телефон' }, 400);
       const { error } = await db.from('app_bookings').insert({ data }); if (error) throw error; return json({ ok: true });
+    }
+    if (action === 'user_list_bookings') {
+      const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+      const { data: authData } = await db.auth.getUser(token);
+      if (!authData.user) return json({ error: 'Требуется авторизация' }, 401);
+      const { data, error } = await db.from('app_bookings').select('*').contains('data', { userId: authData.user.id }).order('created_at', { ascending: false });
+      if (error) throw error;
+      return json({ bookings: (data ?? []).map(row => ({ ...row.data, id: row.id, status: row.status, createdAt: row.created_at })) });
     }
     if (action === 'create_review') {
       const name = String(body.name ?? '').trim(), text = String(body.text ?? '').trim(), rating = Number(body.rating);

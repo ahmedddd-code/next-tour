@@ -1,6 +1,7 @@
 import { Headphones, MessageCircleMore, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 type Props = {
   chatUrl?: string;
@@ -10,6 +11,7 @@ const SESSION_KEY = 'nexttour:support-greeting-shown';
 
 export function FloatingSupportWidget({ chatUrl = '/chat' }: Props) {
   const navigate = useNavigate();
+  const { requestAuth } = useAuth();
   const [greetingVisible, setGreetingVisible] = useState(false);
 
   useEffect(() => {
@@ -26,11 +28,12 @@ export function FloatingSupportWidget({ chatUrl = '/chat' }: Props) {
     };
   }, []);
 
-  function openSupport() {
+  function navigateToSupport() {
     setGreetingVisible(false);
     if (/^https?:\/\//.test(chatUrl)) window.open(chatUrl, '_blank', 'noopener,noreferrer');
     else navigate(chatUrl);
   }
+  function openSupport() { requestAuth(navigateToSupport); }
 
   return <div className="group fixed bottom-4 right-4 z-[9999] sm:bottom-6 sm:right-6">
     {greetingVisible && <div className="absolute bottom-[calc(100%+12px)] right-0 w-64 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl animate-[support-message_.3s_ease-out]">
