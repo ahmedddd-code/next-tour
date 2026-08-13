@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { tours as defaultTours, type Tour } from '../data/tours';
 import { useAutoRefresh } from './useAutoRefresh';
+import { publicTours } from '../utils/tourPhotos';
 
-type ToursContextValue = { tours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; resetTours: () => Promise<void> };
+type ToursContextValue = { tours: Tour[]; allTours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; resetTours: () => Promise<void> };
 const ToursContext = createContext<ToursContextValue | null>(null);
 const refreshInterval = () => 5 * 60 * 1000;
 
@@ -20,7 +21,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
   useAutoRefresh(load, refreshInterval);
   const save = async (tour: Tour) => { await invokeToursData({ action: 'admin_upsert_tour', tour }, true); await load(); };
   const value = useMemo<ToursContextValue>(() => ({
-    tours, addTour: save, updateTour: save,
+    tours: publicTours(tours), allTours: tours, addTour: save, updateTour: save,
     deleteTour: async id => { await invokeToursData({ action: 'admin_delete_tour', id }, true); await load(); },
     resetTours: async () => { await invokeToursData({ action: 'admin_reset_tours', tours: defaultTours }, true); await load(); },
   }), [tours, load]);

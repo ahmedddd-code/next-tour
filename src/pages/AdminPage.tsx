@@ -20,7 +20,7 @@ export function AdminPage() {
 
 function AdminContent() {
   const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem('nexttour:admin-authenticated') === 'true');
-  const { tours, addTour, updateTour, deleteTour, resetTours } = useTours();
+  const { allTours: tours, addTour, updateTour, deleteTour, resetTours } = useTours();
   const [activeTab, setActiveTab] = useState<'tours' | 'bookings' | 'reviews' | 'chats' | 'settings'>('tours');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [editing, setEditing] = useState<Tour | null>(null);
