@@ -7,6 +7,7 @@ type Tour = {
 
 const url = Deno.env.get('SUPABASE_URL');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const fallbackImage = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=78';
 const headers = { 'User-Agent': 'NextTour partner photo sync/1.0', 'X-Requested-With': 'XMLHttpRequest' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const cleanName = (value: string) => value.toLowerCase().replace(/&amp;/g, '&').replace(/\([^)]*\)/g, '')
@@ -60,7 +61,7 @@ function parseKompasCatalog(html: string, catalogUrl: string): KompasHotel[] {
   }).filter(item => item.name && item.images.length);
 }
 
-const matchesName = (candidate: string, target: string) => candidate === target || candidate.includes(target) || target.includes(candidate);
+const matchesName = (candidate: string, target: string) => candidate === target;
 
 async function kompasCatalog(country: string, targets: string[]) {
   const slug = countrySlugs[country];
@@ -90,6 +91,7 @@ async function kompasGallery(link: string, cover: string[]) {
 Deno.serve(async request => {
   if (request.method !== 'POST') return json({ error: 'Use POST' }, 405);
   if (!url || !key) return json({ error: 'Not configured' }, 503);
+  const requestBody = await request.json().catch(() => ({})) as { cursor?: number };
   const db = createClient(url, key, { auth: { persistSession: false } });
   const rows: Array<{ id: string; data: unknown }> = [];
   for (let from = 0; ; from += 1000) {
@@ -98,12 +100,11 @@ Deno.serve(async request => {
     rows.push(...(data ?? []));
     if (!data || data.length < 1000) break;
   }
-  const candidates = rows.map(row => ({ row, tour: row.data as Tour })).filter(({ tour }) =>
-    tour.partnerSource === 'kompas' && (!tour.images?.length || tour.images.every(image => image.includes('images.unsplash.com')))
-  );
-  const hour = new Date().getUTCHours();
-  const rotate = <T>(items: T[], count: number) => [...items.slice((hour * count) % Math.max(items.length, 1)), ...items].slice(0, count);
-  const selected = rotate(candidates.filter(item => item.tour.sourceHotelId || countrySlugs[item.tour.country]), 80);
+  const candidates = rows.map(row => ({ row, tour: row.data as Tour })).filter(({ tour }) => tour.partnerSource === 'kompas');
+  const hotels = [...new Map(candidates.map(item => [`${item.tour.country}:${cleanName(item.tour.hotel)}`, item])).values()];
+  const eligible = hotels.filter(item => countrySlugs[item.tour.country]);
+  const cursor = Number.isFinite(requestBody.cursor) ? Math.max(0, Number(requestBody.cursor)) : new Date().getUTCHours() * 60;
+  const selected = [...eligible.slice(cursor), ...eligible].slice(0, 60);
   const kompasCountries = [...new Set(selected.filter(item => item.tour.partnerSource === 'kompas').map(item => item.tour.country))];
   const kompasEntries = (await Promise.all(kompasCountries.map(async country => {
     const targets = selected.filter(item => item.tour.partnerSource === 'kompas' && item.tour.country === country).map(item => cleanName(item.tour.hotel));
@@ -125,15 +126,23 @@ Deno.serve(async request => {
       images = match ? await kompasGallery(match.link, match.images) : []; sourceUrl = match?.link;
       if (images.length) matched.kompasCatalog++;
     }
-    if (!images.length) continue;
-    const next = { ...tour, images, ...(sourceUrl ? { sourceUrl } : {}) };
-    const { error: saveError } = await db.from('app_tours').update({ data: next }).eq('id', tour.id);
-    if (!saveError) updated++;
+    const duplicates = candidates.filter(item => item.tour.country === tour.country && cleanName(item.tour.hotel) === cleanName(tour.hotel));
+    if (!images.length) {
+      for (const duplicate of duplicates.filter(item => item.tour.sourceUrl?.includes('kompastour.com/kz/rus/country/'))) {
+        await db.from('app_tours').update({ data: { ...duplicate.tour, images: [fallbackImage] } }).eq('id', duplicate.tour.id);
+      }
+      continue;
+    }
+    for (const duplicate of duplicates) {
+      const next = { ...duplicate.tour, images, ...(sourceUrl ? { sourceUrl } : {}) };
+      const { error: saveError } = await db.from('app_tours').update({ data: next }).eq('id', duplicate.tour.id);
+      if (!saveError) updated++;
+    }
   }
   const selectedBySource = Object.fromEntries([...new Set(selected.map(item => item.tour.partnerSource))].map(source => [source, selected.filter(item => item.tour.partnerSource === source).length]));
   const kompasCatalogs = Object.fromEntries(kompasEntries.map(([country, items]) => [country, items.length]));
   const kompasSamples = selected.filter(item => item.tour.partnerSource === 'kompas').slice(0, 5).map(item => ({
     country: item.tour.country, target: cleanName(item.tour.hotel), catalog: (catalogs.get(item.tour.country) ?? []).slice(0, 3).map(entry => entry.name),
   }));
-  return json({ ok: true, checked: selected.length, updated, remaining: Math.max(0, candidates.length - updated), selectedBySource, matched, kompasCatalogs, kompasSamples });
+  return json({ ok: true, cursor, nextCursor: cursor + selected.length, checked: selected.length, updated, totalHotels: eligible.length, selectedBySource, matched, kompasCatalogs, kompasSamples });
 });
