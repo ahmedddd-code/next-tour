@@ -18,3 +18,18 @@ export function resizeImage(file: File, maxWidth = 1400): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+export function optimizedImageUrl(source: string, width: number, quality = 74) {
+  if (!source.includes('images.unsplash.com')) return source;
+  const url = new URL(source);
+  url.searchParams.set('auto', 'format');
+  url.searchParams.set('fit', 'crop');
+  url.searchParams.set('w', String(width));
+  url.searchParams.set('q', String(quality));
+  return url.toString();
+}
+
+export function optimizedImageSrcSet(source: string, widths: number[]) {
+  if (!source.includes('images.unsplash.com')) return undefined;
+  return widths.map(width => `${optimizedImageUrl(source, width)} ${width}w`).join(', ');
+}

@@ -41,6 +41,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .animate-float { animation: float 5s ease-in-out infinite; }
 .section-shell { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
+.render-lazy { content-visibility: auto; contain-intrinsic-size: auto 700px; }
 
 @media (max-width: 640px) {
   .section-shell { width: min(100% - 32px, 1180px); }

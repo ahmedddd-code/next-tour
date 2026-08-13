@@ -2,9 +2,13 @@ import { ArrowLeft, Headphones, Send } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { useSupportChat } from '../hooks/useSupportChat';
+import { SupportChatProvider, useSupportChat } from '../hooks/useSupportChat';
 
 export function ChatPage() {
+  return <SupportChatProvider><ChatContent/></SupportChatProvider>;
+}
+
+function ChatContent() {
   const { conversations, currentConversationId, sendUserMessage, setUserTyping, error, pendingUserMessages } = useSupportChat();
   const [text, setText] = useState('');
   const chatRef = useRef<HTMLDivElement>(null);

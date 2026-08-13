@@ -10,11 +10,15 @@ import { AdminLogin } from '../components/AdminLogin';
 import { Logo } from '../components/Logo';
 import { formatPrice, type Tour } from '../data/tours';
 import { useTours } from '../hooks/useTours';
-import { useBookings } from '../hooks/useBookings';
-import { useReviews } from '../hooks/useReviews';
-import { useSupportChat } from '../hooks/useSupportChat';
+import { BookingsProvider, useBookings } from '../hooks/useBookings';
+import { ReviewsProvider, useReviews } from '../hooks/useReviews';
+import { SupportChatProvider, useSupportChat } from '../hooks/useSupportChat';
 
 export function AdminPage() {
+  return <BookingsProvider><ReviewsProvider><SupportChatProvider><AdminContent/></SupportChatProvider></ReviewsProvider></BookingsProvider>;
+}
+
+function AdminContent() {
   const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem('nexttour:admin-authenticated') === 'true');
   const { tours, addTour, updateTour, deleteTour, resetTours } = useTours();
   const { bookings } = useBookings();

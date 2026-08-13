@@ -2,6 +2,7 @@ import { CalendarDays, Flame, MapPin, Plane, Star } from 'lucide-react';
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPrice, type Tour } from '../data/tours';
+import { optimizedImageSrcSet, optimizedImageUrl } from '../utils/image';
 
 type Props = { tour: Tour };
 
@@ -9,7 +10,7 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-[0_14px_45px_rgba(7,29,52,.08)] transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(7,29,52,.15)]">
       <Link to={`/tour/${tour.id}`} className="relative block h-60 overflow-hidden">
-        <img src={tour.images[0]} alt={tour.hotel} loading="lazy" className="size-full object-cover transition duration-700 group-hover:scale-110" />
+        <img src={optimizedImageUrl(tour.images[0], 720)} srcSet={optimizedImageSrcSet(tour.images[0], [420, 720])} sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1279px) 50vw, 380px" alt={tour.hotel} loading="lazy" decoding="async" className="size-full object-cover transition duration-700 group-hover:scale-110" />
         <div className="absolute inset-0 bg-gradient-to-t from-navy/55 via-transparent to-transparent" />
         {tour.isHot && <span className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-brand px-3 py-2 text-xs font-black text-white shadow-lg"><Flame className="size-3.5 fill-white" /> Горящий тур</span>}
         <span className="absolute right-4 top-4 rounded-full bg-navy/90 px-3 py-2 text-xs font-black text-white shadow-lg backdrop-blur">Next Tour</span>

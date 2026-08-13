@@ -4,7 +4,7 @@ import { Header } from './Header';
 export function Hero() {
   return (
     <section id="top" className="relative min-h-[760px] overflow-hidden bg-navy text-white md:min-h-[820px]">
-      <img src="/images/nexttour-hero.png" alt="Тропический курорт с лазурной лагуной" className="absolute inset-0 size-full object-cover object-[68%_center]" />
+      <img src="/images/nexttour-hero.jpg" alt="Тропический курорт с лазурной лагуной" fetchPriority="high" decoding="async" className="absolute inset-0 size-full object-cover object-[68%_center]" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,20,37,.9)_0%,rgba(3,20,37,.64)_42%,rgba(3,20,37,.08)_78%),linear-gradient(0deg,rgba(3,20,37,.35),transparent_55%)]" />
       <Header />
       <div className="section-shell relative z-10 flex min-h-[760px] items-center pt-24 md:min-h-[820px]">

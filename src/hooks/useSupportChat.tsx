@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
+import { useAutoRefresh } from './useAutoRefresh';
 
 const CREDENTIALS_KEY = 'nexttour:support-chat-credentials:v1';
 const ADMIN_PASSWORD = 'nexttour123';
@@ -21,6 +22,7 @@ type ContextValue = {
 };
 
 const SupportChatContext = createContext<ContextValue | null>(null);
+const refreshInterval = () => 1000;
 
 function loadCredentials() {
   try { const saved = localStorage.getItem(CREDENTIALS_KEY); return saved ? JSON.parse(saved) as ChatCredentials : null; }
@@ -46,7 +48,8 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     try {
       const data = await invoke({ action: 'user_load', ...chatCredentials });
       const conversation = data.conversation as SupportConversation | null;
-      setConversations(conversation ? [conversation] : []);
+      const next = conversation ? [conversation] : [];
+      setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
       setError('');
     } catch { setError('Не удалось обновить чат. Проверьте интернет-соединение.'); }
   }, [credentials]);
@@ -55,20 +58,17 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) return;
     try {
       const data = await invoke({ action: 'admin_list', adminPassword: ADMIN_PASSWORD });
-      setConversations((data.conversations as SupportConversation[]) ?? []);
+      const next = (data.conversations as SupportConversation[]) ?? [];
+      setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
       setError('');
     } catch { setError('Не удалось загрузить обращения клиентов.'); }
   }, []);
 
-  useEffect(() => {
-    const refresh = () => {
-      if (sessionStorage.getItem('nexttour:admin-authenticated') === 'true') void loadAdminConversations();
-      else void loadUserConversation();
-    };
-    refresh();
-    const timer = window.setInterval(refresh, 1000);
-    return () => window.clearInterval(timer);
+  const refresh = useCallback(async () => {
+    if (sessionStorage.getItem('nexttour:admin-authenticated') === 'true') await loadAdminConversations();
+    else await loadUserConversation();
   }, [loadAdminConversations, loadUserConversation]);
+  useAutoRefresh(refresh, refreshInterval);
 
   const setUserTyping = useCallback((typing: boolean) => {
     if (!credentials || (typing && Date.now() - lastTypingUpdate.current < 1500)) return;

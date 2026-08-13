@@ -1,10 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { ADMIN_PASSWORD, invokeSiteData } from '../lib/siteData';
+import { useAutoRefresh } from './useAutoRefresh';
 
 export type NextTourReview = { id: string; name: string; rating: number; text: string; createdAt: string; status: 'pending' | 'published' };
 type NewReview = Pick<NextTourReview, 'name' | 'rating' | 'text'>;
 type ContextValue = { reviews: NextTourReview[]; addReview: (review: NewReview) => Promise<void>; publishReview: (id: string) => Promise<void>; deleteReview: (id: string) => Promise<void> };
 const ReviewsContext = createContext<ContextValue | null>(null);
+const refreshInterval = () => sessionStorage.getItem('nexttour:admin-authenticated') === 'true' ? 5000 : 60000;
 
 export function ReviewsProvider({ children }: { children: ReactNode }) {
   const [reviews, setReviews] = useState<NextTourReview[]>([]);
@@ -12,10 +14,11 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
     try {
       const admin = sessionStorage.getItem('nexttour:admin-authenticated') === 'true';
       const data = await invokeSiteData({ action: admin ? 'admin_list_reviews' : 'list_reviews', ...(admin ? { adminPassword: ADMIN_PASSWORD } : {}) });
-      setReviews((data.reviews as NextTourReview[]) ?? []);
+      const next = (data.reviews as NextTourReview[]) ?? [];
+      setReviews(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
     } catch { /* Повторим автоматически. */ }
   }, []);
-  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 3500); return () => window.clearInterval(timer); }, [load]);
+  useAutoRefresh(load, refreshInterval);
   const value = useMemo<ContextValue>(() => ({
     reviews,
     addReview: async review => { await invokeSiteData({ action: 'create_review', ...review }); await load(); },

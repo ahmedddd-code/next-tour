@@ -8,9 +8,14 @@ import { TourGallery } from '../components/TourGallery';
 import { TourInquiryForm } from '../components/TourInquiryForm';
 import { formatPrice } from '../data/tours';
 import { useTours } from '../hooks/useTours';
+import { BookingsProvider } from '../hooks/useBookings';
 import { NotFoundPage } from './NotFoundPage';
 
 export function TourPage() {
+  return <BookingsProvider><TourContent/></BookingsProvider>;
+}
+
+function TourContent() {
   const { tours } = useTours();
   const { id } = useParams();
   const tour = tours.find(item => item.id === id);
