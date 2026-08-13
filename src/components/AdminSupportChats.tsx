@@ -24,9 +24,10 @@ export function AdminSupportChats() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!selected || !reply.trim()) return;
-    setManagerTyping(selected.id, false);
-    await sendManagerMessage(selected.id, reply.trim());
+    const cleanReply = reply.trim();
     setReply('');
+    setManagerTyping(selected.id, false);
+    void sendManagerMessage(selected.id, cleanReply);
   }
 
   return <section><div className="mb-6"><p className="text-xs font-black uppercase tracking-[.18em] text-brand-dark">Поддержка</p><h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">Чаты с клиентами</h1><p className="mt-2 text-sm text-slate-500">Открытых диалогов: {conversations.filter(item => item.status === 'open').length}</p></div>

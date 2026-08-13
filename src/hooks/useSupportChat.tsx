@@ -11,6 +11,7 @@ type ContextValue = {
   conversations: SupportConversation[];
   currentConversationId: string | null;
   error: string;
+  pendingUserMessages: SupportMessage[];
   sendUserMessage: (text: string) => Promise<void>;
   sendManagerMessage: (conversationId: string, text: string) => Promise<void>;
   toggleConversationStatus: (conversationId: string) => Promise<void>;
@@ -37,6 +38,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<SupportConversation[]>([]);
   const [credentials, setCredentials] = useState<ChatCredentials | null>(loadCredentials);
   const [error, setError] = useState('');
+  const [pendingUserMessages, setPendingUserMessages] = useState<SupportMessage[]>([]);
   const lastTypingUpdate = useRef(0);
 
   const loadUserConversation = useCallback(async (chatCredentials = credentials) => {
@@ -84,16 +86,22 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     conversations,
     currentConversationId: credentials?.conversationId ?? null,
     error,
+    pendingUserMessages,
     sendUserMessage: async text => {
+      const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'user', text, createdAt: new Date().toISOString() };
+      setPendingUserMessages(current => [...current, pending]);
       try {
         const data = await invoke({ action: 'user_send', text, ...credentials });
         const nextCredentials: ChatCredentials = { conversationId: String(data.conversationId), accessToken: String(data.accessToken) };
         localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(nextCredentials));
         setCredentials(nextCredentials);
         await loadUserConversation(nextCredentials);
-      } catch { setError('Сообщение не отправлено. Попробуйте ещё раз.'); }
+        setPendingUserMessages(current => current.filter(message => message.id !== pending.id));
+      } catch { setPendingUserMessages(current => current.filter(message => message.id !== pending.id)); setError('Сообщение не отправлено. Попробуйте ещё раз.'); }
     },
     sendManagerMessage: async (conversationId, text) => {
+      const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'manager', text, createdAt: new Date().toISOString() };
+      setConversations(current => current.map(conversation => conversation.id === conversationId ? { ...conversation, messages: [...conversation.messages, pending] } : conversation));
       try { await invoke({ action: 'admin_send', adminPassword: ADMIN_PASSWORD, conversationId, text }); await loadAdminConversations(); }
       catch { setError('Ответ не отправлен. Попробуйте ещё раз.'); }
     },
@@ -108,7 +116,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     },
     setUserTyping,
     setManagerTyping,
-  }), [conversations, credentials, error, loadAdminConversations, loadUserConversation, setUserTyping, setManagerTyping]);
+  }), [conversations, credentials, error, pendingUserMessages, loadAdminConversations, loadUserConversation, setUserTyping, setManagerTyping]);
 
   return <SupportChatContext.Provider value={value}>{children}</SupportChatContext.Provider>;
 }

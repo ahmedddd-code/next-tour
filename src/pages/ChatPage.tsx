@@ -5,11 +5,11 @@ import { Link } from 'react-router-dom';
 import { useSupportChat } from '../hooks/useSupportChat';
 
 export function ChatPage() {
-  const { conversations, currentConversationId, sendUserMessage, setUserTyping, error } = useSupportChat();
+  const { conversations, currentConversationId, sendUserMessage, setUserTyping, error, pendingUserMessages } = useSupportChat();
   const [text, setText] = useState('');
   const chatRef = useRef<HTMLDivElement>(null);
   const conversation = conversations.find(item => item.id === currentConversationId);
-  const messages = conversation?.messages ?? [];
+  const messages = [...(conversation?.messages ?? []), ...pendingUserMessages];
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -26,9 +26,9 @@ export function ChatPage() {
     event.preventDefault();
     const cleanText = text.trim();
     if (!cleanText) return;
-    setUserTyping(false);
-    await sendUserMessage(cleanText);
     setText('');
+    setUserTyping(false);
+    void sendUserMessage(cleanText);
   }
 
   return <main className="min-h-screen bg-[#edf5f1] px-3 py-4 sm:grid sm:place-items-center sm:p-6">
