@@ -22,7 +22,7 @@ export function Header() {
         </nav>
         <div className="hidden items-center gap-3 sm:flex">
           <DepartureCitySelector variant="header" className="py-2"/>
-          <a href="tel:+77071819912" className="hidden items-center gap-2 text-sm font-bold text-white xl:flex"><Phone className="size-4" />+7 (707) 181-99-12</a>
+          <a href="tel:+77777777777" className="hidden items-center gap-2 text-sm font-bold text-white xl:flex"><Phone className="size-4" />+7 (777) 777-77-77</a>
           {!loading && (user ? <UserMenu light/> : <button onClick={() => openAuth('login')} className="rounded-full border border-white/25 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-white/10">Войти</button>)}
           <Link to="/tours" className="rounded-full bg-brand px-5 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark">Найти тур</Link>
         </div>
