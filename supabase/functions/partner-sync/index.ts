@@ -23,10 +23,19 @@ Deno.serve(async request => {
   try {
     const results = [...await syncSamoSources(), await syncPegas()] as SyncResult[];
     const { data: controls } = await db.from('partner_offer_controls').select('*');
+    const storedPhotoRows: Array<{ id: string; data: unknown }> = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: page, error: pageError } = await db.from('app_tours').select('id,data').like('id', 'partner-%').range(from, from + 999);
+      if (pageError) throw pageError;
+      storedPhotoRows.push(...(page ?? []));
+      if (!page || page.length < 1000) break;
+    }
+    const storedPhotos = new Map(storedPhotoRows.map(row => [row.id, (row.data as PartnerTour)?.images]).filter((entry): entry is [string, string[]] => Boolean(entry[1]?.some(image => !image.includes('images.unsplash.com')))));
     const controlMap = new Map((controls ?? []).map(control => [control.external_id, control]));
     const collectedTours = results.flatMap(result => result.tours).filter(tour => !controlMap.get(tour.externalOfferId)?.hidden).map(tour => {
       const override = controlMap.get(tour.externalOfferId)?.override_data as Partial<PartnerTour> | undefined;
-      return override ? { ...tour, ...override, id: tour.id, externalOfferId: tour.externalOfferId, syncedAt: tour.syncedAt, priceCheckedAt: tour.priceCheckedAt } : tour;
+      const withStoredPhotos = storedPhotos.has(tour.id) ? { ...tour, images: storedPhotos.get(tour.id)! } : tour;
+      return override ? { ...withStoredPhotos, ...override, id: tour.id, externalOfferId: tour.externalOfferId, syncedAt: tour.syncedAt, priceCheckedAt: tour.priceCheckedAt } : withStoredPhotos;
     });
     const tours = [...new Map(collectedTours.map(tour => [tour.id, tour])).values()];
     for (let index = 0; index < tours.length; index += 200) {

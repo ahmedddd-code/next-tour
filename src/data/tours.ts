@@ -28,6 +28,7 @@ export type Tour = {
   availability?: string;
   sourcePrice?: number;
   sourceCurrency?: string;
+  sourceHotelId?: string;
 };
 
 const photos = {

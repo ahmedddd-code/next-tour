@@ -53,7 +53,7 @@ async function parseRows(source: Source, html: string, departureCity: string, co
       images: [fallbackImages[country] ?? fallbackImage],
       description: `${hotel} — пакетный тур в ${location}, ${country}. Вылет из города ${departureCity}. Программа: ${tourProgram}. Размещение: ${room}. Питание: ${meal}. Перелёт: ${transport}. ${availability}.`,
       included: [`Перелёт: ${transport}`, `Проживание: ${room}`, `Питание: ${meal}`, availability], room, tourProgram, availability, sourcePrice, sourceCurrency: source.currencyCode,
-      partnerSource: source.name, externalOfferId: offerKey, sourceUrl: hotelSourceUrl, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
+      partnerSource: source.name, externalOfferId: offerKey, sourceHotelId: attr('hotel'), sourceUrl: hotelSourceUrl, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
   })).then(tours => tours.filter(tour => tour.hotel && tour.price > 0));
 }
 

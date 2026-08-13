@@ -4,6 +4,7 @@ export type PartnerTour = {
   popularity: number; isHot: boolean; images: string[]; description: string; included: string[];
   partnerSource: string; externalOfferId: string; sourceUrl: string; syncedAt: string; priceCheckedAt: string;
   room?: string; tourProgram?: string; availability?: string; sourcePrice?: number; sourceCurrency?: string;
+  sourceHotelId?: string;
 };
 
 export type SyncResult = { source: string; tours: PartnerTour[]; error?: string };
