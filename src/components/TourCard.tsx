@@ -14,7 +14,7 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
         <div className="absolute inset-0 bg-gradient-to-t from-navy/55 via-transparent to-transparent" />
         {tour.isHot && <span className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-brand px-3 py-2 text-xs font-black text-white shadow-lg"><Flame className="size-3.5 fill-white" /> Горящий тур</span>}
         <span className="absolute right-4 top-4 rounded-full bg-navy/90 px-3 py-2 text-xs font-black text-white shadow-lg backdrop-blur">Next Tour</span>
-        <span className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-extrabold text-navy"><Star className="size-3.5 fill-amber-400 text-amber-400" />{tour.rating} <span className="font-medium text-slate-400">({tour.reviews})</span></span>
+        <span className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-extrabold text-navy"><Star className="size-3.5 fill-amber-400 text-amber-400" />{tour.partnerSource ? `${Math.round(tour.rating)}★` : tour.rating}{!tour.partnerSource && tour.reviews > 0 && <span className="font-medium text-slate-400">({tour.reviews})</span>}</span>
       </Link>
       <div className="flex flex-1 flex-col p-5">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-dark"><MapPin className="size-3.5" />{tour.country} · {tour.resort}</p>

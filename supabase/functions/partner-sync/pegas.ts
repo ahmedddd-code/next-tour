@@ -40,7 +40,7 @@ export async function syncPegas(): Promise<SyncResult> {
       const sourceCurrency = currencies.get(Number(offer.currencyId)) ?? 'KZT';
       return { id, hotel: `${offer.hotelName}${offer.hotelCategoryName ? ` ${offer.hotelCategoryName}` : ''}`, country, resort, departureCity,
         dates: start.toLocaleDateString('ru-RU'), nights, meal: 'По программе', price: Math.round(offer.currentPrice), oldPrice: offer.oldPrice ? Math.round(offer.oldPrice) : undefined,
-        rating: offer.hotelRating || 4.5, reviews: 0, popularity: 85, isHot: true, images: [offer.hotelImageUrl || fallbackImage],
+        rating: offer.hotelRating || Number(offer.hotelCategoryName?.match(/[1-5]/)?.[0]) || 0, reviews: 0, popularity: 85, isHot: true, images: [offer.hotelImageUrl || fallbackImage],
         description: `${offer.hotelName} — пакетный тур в ${resort}, ${country}. Вылет из города ${departureCity}, даты поездки ${start.toLocaleDateString('ru-RU')}–${end.toLocaleDateString('ru-RU')}, продолжительность ${nights} ночей. Размещение рассчитано для ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}.`,
         included: ['Перелёт по программе тура', `Проживание: ${nights} ночей`, `Размещение: ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}`],
         availability: 'Доступно к бронированию', sourcePrice: Math.round(offer.currentPrice), sourceCurrency, partnerSource: source, externalOfferId,

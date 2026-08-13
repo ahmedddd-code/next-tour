@@ -48,7 +48,9 @@ async function parseRows(source: Source, html: string, departureCity: string, co
     const hotelSourceUrl = hotelCell.match(/href\s*=\s*["']([^"']+)["']/i)?.[1]?.replaceAll('&amp;', '&') || offerUrl;
     const offerKey = `${source.name}:${attr('cat-claim') || `${attr('hotel')}:${date}:${nights}:${sourcePrice}`}`;
     const id = `partner-${source.name}-${await stableId(offerKey)}`;
-    const rating = Number(hotel.match(/([1-5])\*?\s*$/)?.[1] ?? 4.5);
+    const categoryWords: Record<string, number> = { onestar: 1, twostar: 2, threestar: 3, fourstar: 4, fivestar: 5 };
+    const wordCategory = Object.entries(categoryWords).find(([word]) => hotel.toLowerCase().replace(/\s+/g, '').includes(word))?.[1];
+    const rating = Number(hotel.match(/([1-5])\s*[★*]\s*(?:\([^)]*\))?$/)?.[1] ?? wordCategory ?? 0);
     return { id, hotel, country, resort: location, departureCity, dates: date, nights, meal, price, rating, reviews: 0, popularity: 80, isHot: true,
       images: [fallbackImages[country] ?? fallbackImage],
       description: `${hotel} — пакетный тур в ${location}, ${country}. Вылет из города ${departureCity}. Программа: ${tourProgram}. Размещение: ${room}. Питание: ${meal}. Перелёт: ${transport}. ${availability}.`,

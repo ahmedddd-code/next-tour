@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 
 type Tour = {
   id: string; hotel: string; country: string; partnerSource?: string; sourceHotelId?: string;
-  images: string[]; syncedAt?: string;
+  images: string[]; rating: number; reviews: number; syncedAt?: string;
 };
 
 const url = Deno.env.get('SUPABASE_URL');
@@ -48,7 +48,7 @@ const countrySlugs: Record<string, string> = {
   'Занзибар (Танзания)': 'tanzania', 'Танзания': 'tanzania', 'Малайзия': 'malaysia', 'Сингапур': 'singapore',
 };
 
-type KompasHotel = { name: string; images: string[]; link: string };
+type KompasHotel = { name: string; images: string[]; link: string; category: number };
 
 function parseKompasCatalog(html: string, catalogUrl: string): KompasHotel[] {
   const blocks = [...html.matchAll(/<div class="block">([\s\S]*?)<div class="hotel_btn"/gi)];
@@ -57,7 +57,8 @@ function parseKompasCatalog(html: string, catalogUrl: string): KompasHotel[] {
     const name = block.match(/class="hotel_name"[^>]*>([\s\S]*?)<\/a>/i)?.[1]?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() ?? '';
     const path = block.match(/background-image:\s*url\(([^)]+)\)/i)?.[1]?.replace(/["']/g, '') ?? '';
     const link = block.match(/href=["']([^"']+)["'][^>]*class="hotel_name"/i)?.[1] ?? '';
-    return { name: cleanName(name), images: path ? [new URL(path, catalogUrl).href] : [], link: link ? new URL(link, catalogUrl).href : '' };
+    const category = Math.min(5, [...block.matchAll(/<img[^>]+(?:star\.svg|class=["'][^"']*star)/gi)].length);
+    return { name: cleanName(name), images: path ? [new URL(path, catalogUrl).href] : [], link: link ? new URL(link, catalogUrl).href : '', category };
   }).filter(item => item.name && item.images.length);
 }
 
@@ -116,6 +117,7 @@ Deno.serve(async request => {
   for (const { tour } of selected) {
     let images: string[] = [];
     let sourceUrl: string | undefined;
+    let category = 0;
     if (tour.partnerSource && tour.sourceHotelId) {
       images = await samoHotelImages(tour.partnerSource, tour.sourceHotelId).catch(() => []);
       if (images.length) matched.samo++;
@@ -123,7 +125,7 @@ Deno.serve(async request => {
     if (tour.partnerSource === 'kompas' && !images.length) {
       const target = cleanName(tour.hotel);
       const match = (catalogs.get(tour.country) ?? []).find(item => matchesName(item.name, target));
-      images = match ? await kompasGallery(match.link, match.images) : []; sourceUrl = match?.link;
+      images = match ? await kompasGallery(match.link, match.images) : []; sourceUrl = match?.link; category = match?.category ?? 0;
       if (images.length) matched.kompasCatalog++;
     }
     const duplicates = candidates.filter(item => item.tour.country === tour.country && cleanName(item.tour.hotel) === cleanName(tour.hotel));
@@ -134,7 +136,7 @@ Deno.serve(async request => {
       continue;
     }
     for (const duplicate of duplicates) {
-      const next = { ...duplicate.tour, images, ...(sourceUrl ? { sourceUrl } : {}) };
+      const next = { ...duplicate.tour, images, rating: category || duplicate.tour.rating || 0, reviews: 0, ...(sourceUrl ? { sourceUrl } : {}) };
       const { error: saveError } = await db.from('app_tours').update({ data: next }).eq('id', duplicate.tour.id);
       if (!saveError) updated++;
     }
