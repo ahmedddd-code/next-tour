@@ -11,6 +11,7 @@ export type SupportContact = { name: string; phone: string; email: string; subje
 export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; contact?: SupportContact; messages: SupportMessage[]; userTyping?: boolean; managerTyping?: boolean };
 type ContextValue = {
   conversations: SupportConversation[];
+  loaded: boolean;
   currentConversationId: string | null;
   error: string;
   pendingUserMessages: SupportMessage[];
@@ -39,6 +40,7 @@ async function invoke(body: Record<string, unknown>) {
 
 export function SupportChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<SupportConversation[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [credentials, setCredentials] = useState<ChatCredentials | null>(loadCredentials);
   const [error, setError] = useState('');
   const [pendingUserMessages, setPendingUserMessages] = useState<SupportMessage[]>([]);
@@ -55,6 +57,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       }
       const next = conversation ? [conversation] : [];
       setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
+      setLoaded(true);
       setError('');
     } catch { setError('Не удалось обновить чат. Проверьте интернет-соединение.'); }
   }, [credentials]);
@@ -65,6 +68,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       const data = await invoke({ action: 'admin_list', adminPassword: ADMIN_PASSWORD });
       const next = (data.conversations as SupportConversation[]) ?? [];
       setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
+      setLoaded(true);
       setError('');
     } catch { setError('Не удалось загрузить обращения клиентов.'); }
   }, []);
@@ -88,7 +92,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<ContextValue>(() => ({
-    conversations,
+    conversations, loaded,
     currentConversationId: credentials?.conversationId ?? null,
     error,
     pendingUserMessages,
@@ -121,7 +125,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     },
     setUserTyping,
     setManagerTyping,
-  }), [conversations, credentials, error, pendingUserMessages, loadAdminConversations, loadUserConversation, setUserTyping, setManagerTyping]);
+  }), [conversations, loaded, credentials, error, pendingUserMessages, loadAdminConversations, loadUserConversation, setUserTyping, setManagerTyping]);
 
   return <SupportChatContext.Provider value={value}>{children}</SupportChatContext.Provider>;
 }
