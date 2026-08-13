@@ -4,12 +4,15 @@ type Promotion = {
   id: string; hotelName: string; hotelImageUrl?: string; hotelRating?: number; hotelCategoryName?: string;
   currentPrice: number; oldPrice?: number; startDate: string; endDate: string; stayingDuration?: string;
   constructBookingUrl?: string; hotelDescriptionUrl?: string;
+  hotelCountryId?: number; hotelLocationId?: number; currencyId?: number; adults?: number; child?: number;
 };
 
 type PromotionResponse = {
   packageTourPromotions?: Promotion[];
   departureLocation?: { name?: string };
   countries?: Array<{ id: number; name?: string }>;
+  locations?: Array<{ id: number; name?: string }>;
+  currencies?: Array<{ id: number; iso?: string }>;
 };
 
 export async function syncPegas(): Promise<SyncResult> {
@@ -23,6 +26,8 @@ export async function syncPegas(): Promise<SyncResult> {
     const now = new Date().toISOString();
     const departureCity = data.departureLocation?.name ?? 'Алматы';
     const countries = new Map((data.countries ?? []).map(country => [country.id, country.name ?? 'Зарубежный тур']));
+    const locations = new Map((data.locations ?? []).map(location => [location.id, location.name ?? 'Курорт']));
+    const currencies = new Map((data.currencies ?? []).map(currency => [currency.id, currency.iso ?? 'KZT']));
     const promotions = (data.packageTourPromotions ?? []).slice(0, 350);
     const tours = await Promise.all(promotions.map(async offer => {
       const externalOfferId = `pegas:${offer.id}`;
@@ -30,11 +35,15 @@ export async function syncPegas(): Promise<SyncResult> {
       const end = new Date(offer.endDate);
       const nights = Number(offer.stayingDuration?.match(/\d+/)?.[0]) || Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
       const id = `partner-pegas-${await stableId(externalOfferId)}`;
-      const country = countries.get(Number((offer as unknown as { hotelCountryId?: number }).hotelCountryId)) ?? 'Зарубежный тур';
-      return { id, hotel: `${offer.hotelName}${offer.hotelCategoryName ? ` ${offer.hotelCategoryName}` : ''}`, country, resort: country, departureCity,
+      const country = countries.get(Number(offer.hotelCountryId)) ?? 'Зарубежный тур';
+      const resort = locations.get(Number(offer.hotelLocationId)) ?? country;
+      const sourceCurrency = currencies.get(Number(offer.currencyId)) ?? 'KZT';
+      return { id, hotel: `${offer.hotelName}${offer.hotelCategoryName ? ` ${offer.hotelCategoryName}` : ''}`, country, resort, departureCity,
         dates: start.toLocaleDateString('ru-RU'), nights, meal: 'По программе', price: Math.round(offer.currentPrice), oldPrice: offer.oldPrice ? Math.round(offer.oldPrice) : undefined,
         rating: offer.hotelRating || 4.5, reviews: 0, popularity: 85, isHot: true, images: [offer.hotelImageUrl || fallbackImage],
-        description: 'Актуальное пакетное предложение с перелётом и проживанием.', included, partnerSource: source, externalOfferId,
+        description: `${offer.hotelName} — пакетный тур в ${resort}, ${country}. Вылет из города ${departureCity}, даты поездки ${start.toLocaleDateString('ru-RU')}–${end.toLocaleDateString('ru-RU')}, продолжительность ${nights} ночей. Размещение рассчитано для ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}.`,
+        included: ['Перелёт по программе тура', `Проживание: ${nights} ночей`, `Размещение: ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}`],
+        availability: 'Доступно к бронированию', sourcePrice: Math.round(offer.currentPrice), sourceCurrency, partnerSource: source, externalOfferId,
         sourceUrl: `https://kz.pegast.asia${offer.constructBookingUrl || offer.hotelDescriptionUrl || '/'}`, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
     }));
     return { source, tours: tours.filter(tour => tour.price > 0) };

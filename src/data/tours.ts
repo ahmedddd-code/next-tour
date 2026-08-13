@@ -23,6 +23,11 @@ export type Tour = {
   sourceUrl?: string;
   syncedAt?: string;
   priceCheckedAt?: string;
+  room?: string;
+  tourProgram?: string;
+  availability?: string;
+  sourcePrice?: number;
+  sourceCurrency?: string;
 };
 
 const photos = {

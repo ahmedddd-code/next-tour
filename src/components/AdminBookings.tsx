@@ -25,7 +25,7 @@ export function AdminBookings() {
           <span className="flex items-center gap-2 text-slate-600"><Users className="size-4 text-brand"/>{booking.adults} взр. · {booking.children} дет.</span>
         </div>
         {booking.comment && <p className="mt-4 rounded-2xl border border-slate-100 p-4 text-sm leading-6 text-slate-600"><strong className="text-navy">Комментарий:</strong> {booking.comment}</p>}
-        {booking.partnerSource && <p className="mt-3 text-xs font-semibold text-slate-400">Код предложения: {booking.externalOfferId} · цена проверена {booking.priceCheckedAt ? new Date(booking.priceCheckedAt).toLocaleString('ru-RU') : 'при импорте'}</p>}
+        {booking.partnerSource && <p className="mt-3 text-xs font-semibold text-slate-400">Код предложения: {booking.externalOfferId}{booking.sourcePrice && booking.sourceCurrency ? ` · исходная цена ${new Intl.NumberFormat('ru-RU').format(booking.sourcePrice)} ${booking.sourceCurrency}` : ''} · цена проверена {booking.priceCheckedAt ? new Date(booking.priceCheckedAt).toLocaleString('ru-RU') : 'при импорте'}</p>}
       </article>)}
     </div>}
   </section>;

@@ -3,6 +3,7 @@ export type PartnerTour = {
   dates: string; nights: number; meal: string; price: number; oldPrice?: number; rating: number; reviews: number;
   popularity: number; isHot: boolean; images: string[]; description: string; included: string[];
   partnerSource: string; externalOfferId: string; sourceUrl: string; syncedAt: string; priceCheckedAt: string;
+  room?: string; tourProgram?: string; availability?: string; sourcePrice?: number; sourceCurrency?: string;
 };
 
 export type SyncResult = { source: string; tours: PartnerTour[]; error?: string };

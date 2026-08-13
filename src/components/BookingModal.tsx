@@ -37,7 +37,7 @@ export function BookingModal({ tour, onClose }: Props) {
     if (phoneDigits.length !== 10) { setPhoneError('Введите 10 цифр номера телефона.'); return; }
     setSubmitting(true); setSubmitError('');
     try {
-      await addBooking({ tourId: tour.id, tourHotel: tour.hotel, tourDestination: `${tour.country}, ${tour.resort}`, tourPrice: tour.price, name: name.trim(), phone: formatPhone(phoneDigits), email: email.trim(), tripDate, adults, children, comment: comment.trim(), partnerSource: tour.partnerSource, externalOfferId: tour.externalOfferId, sourceUrl: tour.sourceUrl, priceCheckedAt: tour.priceCheckedAt });
+      await addBooking({ tourId: tour.id, tourHotel: tour.hotel, tourDestination: `${tour.country}, ${tour.resort}`, tourPrice: tour.price, name: name.trim(), phone: formatPhone(phoneDigits), email: email.trim(), tripDate, adults, children, comment: comment.trim(), partnerSource: tour.partnerSource, externalOfferId: tour.externalOfferId, sourceUrl: tour.sourceUrl, priceCheckedAt: tour.priceCheckedAt, sourcePrice: tour.sourcePrice, sourceCurrency: tour.sourceCurrency });
       setSent(true);
     } catch { setSubmitError('Не удалось отправить заявку. Проверьте интернет и попробуйте ещё раз.'); }
     finally { setSubmitting(false); }

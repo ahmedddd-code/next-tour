@@ -3,7 +3,7 @@ import { ADMIN_PASSWORD, invokeSiteData } from '../lib/siteData';
 import { useAutoRefresh } from './useAutoRefresh';
 import { useAuth } from './useAuth';
 
-export type Booking = { id: string; userId?: string; tourId: string; tourHotel: string; tourDestination: string; tourPrice: number; name: string; phone: string; email: string; tripDate: string; adults: number; children: number; comment: string; partnerSource?: string; externalOfferId?: string; sourceUrl?: string; priceCheckedAt?: string; status: 'new' | 'processed'; createdAt: string };
+export type Booking = { id: string; userId?: string; tourId: string; tourHotel: string; tourDestination: string; tourPrice: number; name: string; phone: string; email: string; tripDate: string; adults: number; children: number; comment: string; partnerSource?: string; externalOfferId?: string; sourceUrl?: string; priceCheckedAt?: string; sourcePrice?: number; sourceCurrency?: string; status: 'new' | 'processed'; createdAt: string };
 export type NewBooking = Omit<Booking, 'id' | 'status' | 'createdAt'>;
 type ContextValue = { bookings: Booking[]; addBooking: (booking: NewBooking) => Promise<void>; toggleBookingStatus: (id: string) => Promise<void>; deleteBooking: (id: string) => Promise<void> };
 const BookingsContext = createContext<ContextValue | null>(null);
