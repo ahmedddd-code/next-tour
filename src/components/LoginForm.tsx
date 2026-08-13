@@ -2,6 +2,7 @@ import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { GoogleAuthButton } from './GoogleAuthButton';
 
 export function LoginForm({ onRegister }: { onRegister: () => void }) {
   const { login, resetPassword } = useAuth();
@@ -33,6 +34,7 @@ export function LoginForm({ onRegister }: { onRegister: () => void }) {
     {error && <motion.p initial={{ x: -5 }} animate={{ x: [-5, 5, -4, 4, 0] }} className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-600">{error}</motion.p>}
     {notice && <p className="rounded-xl bg-brand/10 p-3 text-xs font-bold text-brand-dark">{notice}</p>}
     <button disabled={busy} className="flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand to-emerald-600 font-black text-white shadow-lg shadow-brand/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60">{busy && <LoaderCircle className="size-4 animate-spin"/>}{busy ? 'Входим…' : 'Войти'}</button>
+    <GoogleAuthButton/>
     <p className="text-center text-sm text-slate-500">Нет аккаунта? <button type="button" onClick={onRegister} className="font-black text-brand-dark hover:underline">Зарегистрироваться</button></p>
   </motion.form>;
 }

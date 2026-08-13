@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { kazakhstanCities } from '../data/kazakhstanCities';
 import { useAuth } from '../hooks/useAuth';
 import { extractPhoneDigits, formatPhone } from '../utils/phone';
+import { GoogleAuthButton } from './GoogleAuthButton';
 
 type Errors = Partial<Record<'firstName' | 'lastName' | 'phone' | 'email' | 'birthDate' | 'city' | 'password' | 'confirmPassword' | 'consent' | 'submit', string>>;
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,6 +52,7 @@ export function RegisterForm({ onLogin }: { onLogin: () => void }) {
     <label className="mt-1 flex items-start gap-3 sm:col-span-2"><input type="checkbox" checked={form.consent} onChange={event => update('consent', event.target.checked)} className="mt-0.5 size-5 rounded border-slate-300 accent-emerald-600"/><span className="text-xs leading-5 text-slate-500">Я согласен с условиями обработки персональных данных<FieldError text={errors.consent}/></span></label>
     {errors.submit && <motion.p initial={{ x: -5 }} animate={{ x: [-5, 5, -4, 4, 0] }} className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-600 sm:col-span-2">{errors.submit}</motion.p>}
     <button disabled={busy} className="mt-1 flex h-13 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand to-emerald-600 font-black text-white shadow-lg shadow-brand/20 transition hover:-translate-y-0.5 disabled:opacity-60 sm:col-span-2">{busy && <LoaderCircle className="size-4 animate-spin"/>}{busy ? 'Создаём аккаунт…' : 'Создать аккаунт'}</button>
+    <GoogleAuthButton className="sm:col-span-2"/>
     <p className="text-center text-xs text-slate-500 sm:col-span-2">Уже зарегистрированы? <button type="button" onClick={onLogin} className="font-black text-brand-dark hover:underline">Войти</button></p>
   </motion.form>;
 }

@@ -27,6 +27,7 @@ type AuthContextValue = {
   closeAuth: () => void;
   setAuthTab: (tab: AuthTab) => void;
   login: (identifier: string, password: string) => Promise<string | null>;
+  loginWithGoogle: () => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
   resetPassword: (email: string) => Promise<string | null>;
   logout: () => Promise<void>;
@@ -37,8 +38,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function profileFromUser(user: User | null): UserProfile | null {
   if (!user) return null;
   const metadata = user.user_metadata as Record<string, unknown>;
+  const fullName = String(metadata.full_name ?? metadata.name ?? '').trim().split(/\s+/);
   return {
-    firstName: String(metadata.firstName ?? ''), lastName: String(metadata.lastName ?? ''), middleName: String(metadata.middleName ?? ''),
+    firstName: String(metadata.firstName ?? metadata.given_name ?? fullName[0] ?? ''),
+    lastName: String(metadata.lastName ?? metadata.family_name ?? fullName.slice(1).join(' ') ?? ''),
+    middleName: String(metadata.middleName ?? ''),
     phone: String(metadata.phone ?? user.phone ?? ''), email: user.email ?? '', birthDate: String(metadata.birthDate ?? ''), city: String(metadata.city ?? ''),
   };
 }
@@ -103,6 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         finishAuth(data.user);
         return null;
       } catch (error) { return authError(error instanceof Error ? error.message : 'Login failed'); }
+    },
+    loginWithGoogle: async () => {
+      try {
+        const { supabase } = await import('../lib/supabase');
+        const redirectTo = `${window.location.origin}${window.location.pathname}${window.location.search}`;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo, queryParams: { access_type: 'offline', prompt: 'select_account' } },
+        });
+        return error ? authError(error.message) : null;
+      } catch (error) { return authError(error instanceof Error ? error.message : 'Google login failed'); }
     },
     register: async data => {
       try {
