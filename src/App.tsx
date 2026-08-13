@@ -4,7 +4,6 @@ import { ScrollManager } from './components/ScrollManager';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
 import { useAuth } from './hooks/useAuth';
-import { PageTransition } from './components/PageTransition';
 
 const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })));
 const ToursPage = lazy(() => import('./pages/ToursPage').then(module => ({ default: module.ToursPage })));
@@ -32,5 +31,5 @@ function PublicOverlays() {
 }
 
 export default function App() {
-  return <><ScrollManager/><Suspense fallback={<PageLoader/>}><PageTransition><Routes><Route path="/" element={<HomePage/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></PageTransition></Suspense><PublicOverlays/><AuthExperience/></>;
+  return <><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><PublicOverlays/><AuthExperience/></>;
 }
