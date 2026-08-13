@@ -1,9 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import { ScrollManager } from './components/ScrollManager';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
 import { useAuth } from './hooks/useAuth';
+import { PageTransition } from './components/PageTransition';
 
 const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })));
 const ToursPage = lazy(() => import('./pages/ToursPage').then(module => ({ default: module.ToursPage })));
@@ -23,6 +24,13 @@ function AuthExperience() {
   return modalOpen || registrationSuccess ? <Suspense fallback={null}><AuthModal/></Suspense> : null;
 }
 
+function PublicOverlays() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith('/admin')) return null;
+  const travelPage = pathname === '/' || pathname === '/tours' || pathname.startsWith('/tour/');
+  return <>{travelPage && <DepartureCityDialogs/>}{pathname !== '/chat' && <FloatingSupportWidget/>}</>;
+}
+
 export default function App() {
-  return <><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><DepartureCityDialogs/><FloatingSupportWidget/><AuthExperience/></>;
+  return <><ScrollManager/><Suspense fallback={<PageLoader/>}><PageTransition><Routes><Route path="/" element={<HomePage/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></PageTransition></Suspense><PublicOverlays/><AuthExperience/></>;
 }

@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ToursProvider } from './hooks/useTours';
 import { DepartureCityProvider } from './hooks/useDepartureCity';
 import { AuthProvider } from './hooks/useAuth';
+import { ToastProvider } from './hooks/useToast';
 import App from './App.tsx';
 import './index.css';
 
@@ -12,13 +13,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <HelmetProvider>
       <BrowserRouter>
-        <AuthProvider>
+        <ToastProvider><AuthProvider>
           <ToursProvider>
             <DepartureCityProvider>
               <App />
             </DepartureCityProvider>
           </ToursProvider>
-        </AuthProvider>
+        </AuthProvider></ToastProvider>
       </BrowserRouter>
     </HelmetProvider>
   </React.StrictMode>,

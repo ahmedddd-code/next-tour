@@ -7,13 +7,14 @@ const ADMIN_PASSWORD = 'nexttour123';
 type ChatCredentials = { conversationId: string; accessToken: string };
 
 export type SupportMessage = { id: string; role: 'user' | 'manager' | 'system'; text: string; createdAt: string };
-export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; messages: SupportMessage[]; userTyping?: boolean; managerTyping?: boolean };
+export type SupportContact = { name: string; phone: string; email: string; subject: string };
+export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; contact?: SupportContact; messages: SupportMessage[]; userTyping?: boolean; managerTyping?: boolean };
 type ContextValue = {
   conversations: SupportConversation[];
   currentConversationId: string | null;
   error: string;
   pendingUserMessages: SupportMessage[];
-  sendUserMessage: (text: string) => Promise<void>;
+  sendUserMessage: (text: string, contact?: SupportContact) => Promise<void>;
   sendManagerMessage: (conversationId: string, text: string) => Promise<void>;
   toggleConversationStatus: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
@@ -48,6 +49,10 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     try {
       const data = await invoke({ action: 'user_load', ...chatCredentials });
       const conversation = data.conversation as SupportConversation | null;
+      if (!conversation) {
+        localStorage.removeItem(CREDENTIALS_KEY);
+        setCredentials(null);
+      }
       const next = conversation ? [conversation] : [];
       setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
       setError('');
@@ -87,17 +92,17 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     currentConversationId: credentials?.conversationId ?? null,
     error,
     pendingUserMessages,
-    sendUserMessage: async text => {
+    sendUserMessage: async (text, contact) => {
       const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'user', text, createdAt: new Date().toISOString() };
       setPendingUserMessages(current => [...current, pending]);
       try {
-        const data = await invoke({ action: 'user_send', text, ...credentials });
+        const data = await invoke({ action: 'user_send', text, contact, ...credentials });
         const nextCredentials: ChatCredentials = { conversationId: String(data.conversationId), accessToken: String(data.accessToken) };
         localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(nextCredentials));
         setCredentials(nextCredentials);
         await loadUserConversation(nextCredentials);
         setPendingUserMessages(current => current.filter(message => message.id !== pending.id));
-      } catch { setPendingUserMessages(current => current.filter(message => message.id !== pending.id)); setError('Сообщение не отправлено. Попробуйте ещё раз.'); }
+      } catch { setPendingUserMessages(current => current.filter(message => message.id !== pending.id)); setError('Не удалось отправить сообщение. Проверьте подключение к интернету или попробуйте позже.'); throw new Error('support-send-failed'); }
     },
     sendManagerMessage: async (conversationId, text) => {
       const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'manager', text, createdAt: new Date().toISOString() };

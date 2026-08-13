@@ -8,7 +8,7 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type ConversationRow = { id: string; status: 'open' | 'closed'; created_at: string; updated_at: string; user_typing_until?: string | null; manager_typing_until?: string | null };
+type ConversationRow = { id: string; status: 'open' | 'closed'; created_at: string; updated_at: string; contact?: Record<string, string>; user_typing_until?: string | null; manager_typing_until?: string | null };
 type MessageRow = { id: string; conversation_id: string; sender: 'user' | 'manager' | 'system'; text: string; created_at: string };
 
 function json(body: unknown, status = 200) {
@@ -27,6 +27,7 @@ function serialize(conversation: ConversationRow, messages: MessageRow[]) {
     status: conversation.status,
     createdAt: conversation.created_at,
     updatedAt: conversation.updated_at,
+    contact: conversation.contact ?? {},
     messages: messages.filter(message => message.conversation_id === conversation.id).map(message => ({
       id: message.id, role: message.sender, text: message.text, createdAt: message.created_at,
     })),
@@ -57,7 +58,10 @@ Deno.serve(async request => {
 
       if (!conversationId || !accessToken) {
         conversationId = crypto.randomUUID(); accessToken = crypto.randomUUID(); isNew = true;
-        const { error } = await db.from('support_conversations').insert({ id: conversationId, access_token_hash: await hashToken(accessToken) });
+        const source = body.contact && typeof body.contact === 'object' ? body.contact as Record<string, unknown> : {};
+        const contact = { name: String(source.name ?? '').trim().slice(0, 120), phone: String(source.phone ?? '').trim().slice(0, 30), email: String(source.email ?? '').trim().slice(0, 200), subject: String(source.subject ?? '').trim().slice(0, 200) };
+        if (!contact.name || !/^\+7\d{10}$/.test(contact.phone) || !/^\S+@\S+\.\S+$/.test(contact.email) || !contact.subject) return json({ error: 'Заполните контактные данные' }, 400);
+        const { error } = await db.from('support_conversations').insert({ id: conversationId, access_token_hash: await hashToken(accessToken), contact });
         if (error) throw error;
       } else {
         const { data } = await db.from('support_conversations').select('id').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle();
@@ -76,7 +80,7 @@ Deno.serve(async request => {
     if (action === 'user_load') {
       const conversationId = String(body.conversationId ?? '');
       const accessToken = String(body.accessToken ?? '');
-      const { data: conversation } = await db.from('support_conversations').select('id,status,created_at,updated_at,user_typing_until,manager_typing_until').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle<ConversationRow>();
+      const { data: conversation } = await db.from('support_conversations').select('id,status,created_at,updated_at,contact,user_typing_until,manager_typing_until').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle<ConversationRow>();
       if (!conversation) return json({ conversation: null });
       const { data: messages, error } = await db.from('support_messages').select('id,conversation_id,sender,text,created_at').eq('conversation_id', conversationId).order('created_at');
       if (error) throw error;
@@ -84,7 +88,7 @@ Deno.serve(async request => {
     }
 
     if (action === 'admin_list') {
-      const { data: conversations, error: conversationError } = await db.from('support_conversations').select('id,status,created_at,updated_at,user_typing_until,manager_typing_until').order('updated_at', { ascending: false });
+      const { data: conversations, error: conversationError } = await db.from('support_conversations').select('id,status,created_at,updated_at,contact,user_typing_until,manager_typing_until').order('updated_at', { ascending: false });
       if (conversationError) throw conversationError;
       const { data: messages, error: messageError } = await db.from('support_messages').select('id,conversation_id,sender,text,created_at').order('created_at');
       if (messageError) throw messageError;
