@@ -18,8 +18,14 @@ Deno.serve(async request => {
     if (action.startsWith('admin_') && !admin) return json({ error: 'Неверный пароль администратора' }, 401);
 
     if (action === 'list_tours') {
-      const { data, error } = await db.from('app_tours').select('data').order('updated_at', { ascending: false });
-      if (error) throw error; return json({ tours: (data ?? []).map(row => row.data) });
+      const rows: Array<{ data: unknown }> = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await db.from('app_tours').select('data').order('updated_at', { ascending: false }).range(from, from + 999);
+        if (error) throw error;
+        rows.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      return json({ tours: rows.map(row => row.data) });
     }
     if (action === 'list_reviews') {
       const { data, error } = await db.from('app_reviews').select('*').eq('status', 'published').order('created_at', { ascending: false });
@@ -56,6 +62,7 @@ Deno.serve(async request => {
     }
     if (action === 'admin_upsert_tour') {
       const tour = body.tour as Record<string, unknown>; if (!tour || typeof tour.id !== 'string') return json({ error: 'Некорректный тур' }, 400);
+      if (typeof tour.externalOfferId === 'string') await db.from('partner_offer_controls').upsert({ external_id: tour.externalOfferId, hidden: false, override_data: tour, updated_at: new Date().toISOString() });
       const { error } = await db.from('app_tours').upsert({ id: tour.id, data: tour, updated_at: new Date().toISOString() }); if (error) throw error; return json({ ok: true });
     }
     if (action === 'admin_seed_tours') {
@@ -65,7 +72,9 @@ Deno.serve(async request => {
       return json({ ok: true });
     }
     const id = String(body.id ?? '');
-    if (action === 'admin_delete_tour') { const { error } = await db.from('app_tours').delete().eq('id', id); if (error) throw error; return json({ ok: true }); }
+    if (action === 'admin_delete_tour') { const { data: existing } = await db.from('app_tours').select('data').eq('id', id).maybeSingle(); const externalId = (existing?.data as Record<string, unknown> | undefined)?.externalOfferId; if (typeof externalId === 'string') await db.from('partner_offer_controls').upsert({ external_id: externalId, hidden: true, updated_at: new Date().toISOString() }); const { error } = await db.from('app_tours').delete().eq('id', id); if (error) throw error; return json({ ok: true }); }
+    if (action === 'admin_partner_sync_status') { const { data, error } = await db.from('partner_sync_state').select('*').order('source'); if (error) throw error; return json({ sources: data ?? [] }); }
+    if (action === 'admin_partner_sync') { const response = await fetch(`${url}/functions/v1/partner-sync`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ manual: true }) }); const result = await response.json(); return json(result, response.ok ? 200 : 502); }
     if (action === 'admin_reset_tours') { await db.from('app_tours').delete().neq('id', ''); const tours = body.tours as Array<Record<string, unknown>>; const { error } = await db.from('app_tours').insert(tours.map(tour => ({ id: tour.id, data: tour }))); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_booking_status') { const { error } = await db.from('app_bookings').update({ status: body.status, updated_at: new Date().toISOString() }).eq('id', id); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_delete_booking') { const { error } = await db.from('app_bookings').delete().eq('id', id); if (error) throw error; return json({ ok: true }); }

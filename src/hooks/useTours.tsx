@@ -4,7 +4,7 @@ import { useAutoRefresh } from './useAutoRefresh';
 
 type ToursContextValue = { tours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; resetTours: () => Promise<void> };
 const ToursContext = createContext<ToursContextValue | null>(null);
-const refreshInterval = () => sessionStorage.getItem('nexttour:admin-authenticated') === 'true' ? 5000 : 60000;
+const refreshInterval = () => 5 * 60 * 1000;
 
 async function invokeToursData(body: Record<string, unknown>, admin = false) {
   const { ADMIN_PASSWORD, invokeSiteData } = await import('../lib/siteData');
@@ -14,7 +14,7 @@ async function invokeToursData(body: Record<string, unknown>, admin = false) {
 export function ToursProvider({ children }: { children: ReactNode }) {
   const [tours, setTours] = useState<Tour[]>(defaultTours);
   const load = useCallback(async () => {
-    try { const data = await invokeToursData({ action: 'list_tours' }); const cloudTours = data.tours as Tour[]; if (cloudTours.length) setTours(current => JSON.stringify(current) === JSON.stringify(cloudTours) ? current : cloudTours); }
+    try { const data = await invokeToursData({ action: 'list_tours' }); const cloudTours = data.tours as Tour[]; if (cloudTours.length) setTours(cloudTours); }
     catch { /* Встроенный каталог остаётся доступен при временном отсутствии сети. */ }
   }, []);
   useAutoRefresh(load, refreshInterval);

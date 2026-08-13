@@ -18,6 +18,11 @@ export type Tour = {
   images: string[];
   description: string;
   included: string[];
+  partnerSource?: string;
+  externalOfferId?: string;
+  sourceUrl?: string;
+  syncedAt?: string;
+  priceCheckedAt?: string;
 };
 
 const photos = {
