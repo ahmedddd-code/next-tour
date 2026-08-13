@@ -1,82 +1,24 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ADMIN_PASSWORD, invokeSiteData } from '../lib/siteData';
 
-const STORAGE_KEY = 'nexttour:bookings:v1';
-
-export type Booking = {
-  id: string;
-  tourId: string;
-  tourHotel: string;
-  tourDestination: string;
-  tourPrice: number;
-  name: string;
-  phone: string;
-  email: string;
-  tripDate: string;
-  adults: number;
-  children: number;
-  comment: string;
-  status: 'new' | 'processed';
-  createdAt: string;
-};
-
+export type Booking = { id: string; tourId: string; tourHotel: string; tourDestination: string; tourPrice: number; name: string; phone: string; email: string; tripDate: string; adults: number; children: number; comment: string; status: 'new' | 'processed'; createdAt: string };
 export type NewBooking = Omit<Booking, 'id' | 'status' | 'createdAt'>;
-
-type BookingsContextValue = {
-  bookings: Booking[];
-  addBooking: (booking: NewBooking) => Booking;
-  toggleBookingStatus: (id: string) => void;
-  deleteBooking: (id: string) => void;
-};
-
-const BookingsContext = createContext<BookingsContextValue | null>(null);
-
-function loadBookings() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) as Booking[] : [];
-  } catch {
-    return [];
-  }
-}
+type ContextValue = { bookings: Booking[]; addBooking: (booking: NewBooking) => Promise<void>; toggleBookingStatus: (id: string) => Promise<void>; deleteBooking: (id: string) => Promise<void> };
+const BookingsContext = createContext<ContextValue | null>(null);
 
 export function BookingsProvider({ children }: { children: ReactNode }) {
-  const [bookings, setBookings] = useState<Booking[]>(loadBookings);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
-  }, [bookings]);
-
-  useEffect(() => {
-    const syncBookings = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) setBookings(loadBookings());
-    };
-    window.addEventListener('storage', syncBookings);
-    return () => window.removeEventListener('storage', syncBookings);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const load = useCallback(async () => {
+    if (sessionStorage.getItem('nexttour:admin-authenticated') !== 'true') return;
+    try { const data = await invokeSiteData({ action: 'admin_list_bookings', adminPassword: ADMIN_PASSWORD }); setBookings((data.bookings as Booking[]) ?? []); } catch { /* Повторим автоматически. */ }
   }, []);
-
-  const value = useMemo<BookingsContextValue>(() => ({
+  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 2500); return () => window.clearInterval(timer); }, [load]);
+  const value = useMemo<ContextValue>(() => ({
     bookings,
-    addBooking: draft => {
-      const booking: Booking = {
-        ...draft,
-        id: `booking-${crypto.randomUUID()}`,
-        status: 'new',
-        createdAt: new Date().toISOString(),
-      };
-      setBookings(current => [booking, ...current]);
-      return booking;
-    },
-    toggleBookingStatus: id => setBookings(current => current.map(booking => (
-      booking.id === id ? { ...booking, status: booking.status === 'new' ? 'processed' : 'new' } : booking
-    ))),
-    deleteBooking: id => setBookings(current => current.filter(booking => booking.id !== id)),
-  }), [bookings]);
-
+    addBooking: async booking => { await invokeSiteData({ action: 'create_booking', data: booking }); },
+    toggleBookingStatus: async id => { const item = bookings.find(booking => booking.id === id); await invokeSiteData({ action: 'admin_booking_status', adminPassword: ADMIN_PASSWORD, id, status: item?.status === 'new' ? 'processed' : 'new' }); await load(); },
+    deleteBooking: async id => { await invokeSiteData({ action: 'admin_delete_booking', adminPassword: ADMIN_PASSWORD, id }); await load(); },
+  }), [bookings, load]);
   return <BookingsContext.Provider value={value}>{children}</BookingsContext.Provider>;
 }
-
-export function useBookings() {
-  const context = useContext(BookingsContext);
-  if (!context) throw new Error('useBookings должен использоваться внутри BookingsProvider');
-  return context;
-}
+export function useBookings() { const context = useContext(BookingsContext); if (!context) throw new Error('useBookings должен использоваться внутри BookingsProvider'); return context; }

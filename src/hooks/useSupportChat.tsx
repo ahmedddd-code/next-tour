@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 
 const CREDENTIALS_KEY = 'nexttour:support-chat-credentials:v1';
@@ -6,7 +6,7 @@ const ADMIN_PASSWORD = 'nexttour123';
 type ChatCredentials = { conversationId: string; accessToken: string };
 
 export type SupportMessage = { id: string; role: 'user' | 'manager' | 'system'; text: string; createdAt: string };
-export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; messages: SupportMessage[] };
+export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; messages: SupportMessage[]; userTyping?: boolean; managerTyping?: boolean };
 type ContextValue = {
   conversations: SupportConversation[];
   currentConversationId: string | null;
@@ -15,6 +15,8 @@ type ContextValue = {
   sendManagerMessage: (conversationId: string, text: string) => Promise<void>;
   toggleConversationStatus: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
+  setUserTyping: (typing: boolean) => void;
+  setManagerTyping: (conversationId: string, typing: boolean) => void;
 };
 
 const SupportChatContext = createContext<ContextValue | null>(null);
@@ -35,6 +37,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<SupportConversation[]>([]);
   const [credentials, setCredentials] = useState<ChatCredentials | null>(loadCredentials);
   const [error, setError] = useState('');
+  const lastTypingUpdate = useRef(0);
 
   const loadUserConversation = useCallback(async (chatCredentials = credentials) => {
     if (!isSupabaseConfigured || !chatCredentials) return;
@@ -61,9 +64,21 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       else void loadUserConversation();
     };
     refresh();
-    const timer = window.setInterval(refresh, 4000);
+    const timer = window.setInterval(refresh, 1000);
     return () => window.clearInterval(timer);
   }, [loadAdminConversations, loadUserConversation]);
+
+  const setUserTyping = useCallback((typing: boolean) => {
+    if (!credentials || (typing && Date.now() - lastTypingUpdate.current < 1500)) return;
+    lastTypingUpdate.current = Date.now();
+    void invoke({ action: 'user_typing', ...credentials, typing });
+  }, [credentials]);
+
+  const setManagerTyping = useCallback((conversationId: string, typing: boolean) => {
+    if (typing && Date.now() - lastTypingUpdate.current < 1500) return;
+    lastTypingUpdate.current = Date.now();
+    void invoke({ action: 'admin_typing', adminPassword: ADMIN_PASSWORD, conversationId, typing });
+  }, []);
 
   const value = useMemo<ContextValue>(() => ({
     conversations,
@@ -91,7 +106,9 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       try { await invoke({ action: 'admin_delete', adminPassword: ADMIN_PASSWORD, conversationId }); await loadAdminConversations(); }
       catch { setError('Не удалось удалить диалог.'); }
     },
-  }), [conversations, credentials, error, loadAdminConversations, loadUserConversation]);
+    setUserTyping,
+    setManagerTyping,
+  }), [conversations, credentials, error, loadAdminConversations, loadUserConversation, setUserTyping, setManagerTyping]);
 
   return <SupportChatContext.Provider value={value}>{children}</SupportChatContext.Provider>;
 }

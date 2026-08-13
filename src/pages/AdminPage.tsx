@@ -23,7 +23,7 @@ export function AdminPage() {
   const [activeTab, setActiveTab] = useState<'tours' | 'bookings' | 'reviews' | 'chats'>('tours');
   const [editing, setEditing] = useState<Tour | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  function save(tour: Tour) { if (editing) updateTour(tour); else addTour(tour); setEditing(null); setFormOpen(false); }
+  async function save(tour: Tour) { if (editing) await updateTour(tour); else await addTour(tour); setEditing(null); setFormOpen(false); }
   function edit(tour: Tour) { setEditing(tour); setFormOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function remove(tour: Tour) { if (window.confirm(`Удалить тур «${tour.hotel}»?`)) { deleteTour(tour.id); if (editing?.id === tour.id) { setEditing(null); setFormOpen(false); } } }
 

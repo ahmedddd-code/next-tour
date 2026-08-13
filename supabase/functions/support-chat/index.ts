@@ -8,7 +8,7 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type ConversationRow = { id: string; status: 'open' | 'closed'; created_at: string; updated_at: string };
+type ConversationRow = { id: string; status: 'open' | 'closed'; created_at: string; updated_at: string; user_typing_until?: string | null; manager_typing_until?: string | null };
 type MessageRow = { id: string; conversation_id: string; sender: 'user' | 'manager' | 'system'; text: string; created_at: string };
 
 function json(body: unknown, status = 200) {
@@ -30,6 +30,8 @@ function serialize(conversation: ConversationRow, messages: MessageRow[]) {
     messages: messages.filter(message => message.conversation_id === conversation.id).map(message => ({
       id: message.id, role: message.sender, text: message.text, createdAt: message.created_at,
     })),
+    userTyping: Boolean(conversation.user_typing_until && new Date(conversation.user_typing_until).getTime() > Date.now()),
+    managerTyping: Boolean(conversation.manager_typing_until && new Date(conversation.manager_typing_until).getTime() > Date.now()),
   };
 }
 
@@ -74,7 +76,7 @@ Deno.serve(async request => {
     if (action === 'user_load') {
       const conversationId = String(body.conversationId ?? '');
       const accessToken = String(body.accessToken ?? '');
-      const { data: conversation } = await db.from('support_conversations').select('id,status,created_at,updated_at').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle<ConversationRow>();
+      const { data: conversation } = await db.from('support_conversations').select('id,status,created_at,updated_at,user_typing_until,manager_typing_until').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle<ConversationRow>();
       if (!conversation) return json({ conversation: null });
       const { data: messages, error } = await db.from('support_messages').select('id,conversation_id,sender,text,created_at').eq('conversation_id', conversationId).order('created_at');
       if (error) throw error;
@@ -82,7 +84,7 @@ Deno.serve(async request => {
     }
 
     if (action === 'admin_list') {
-      const { data: conversations, error: conversationError } = await db.from('support_conversations').select('id,status,created_at,updated_at').order('updated_at', { ascending: false });
+      const { data: conversations, error: conversationError } = await db.from('support_conversations').select('id,status,created_at,updated_at,user_typing_until,manager_typing_until').order('updated_at', { ascending: false });
       if (conversationError) throw conversationError;
       const { data: messages, error: messageError } = await db.from('support_messages').select('id,conversation_id,sender,text,created_at').order('created_at');
       if (messageError) throw messageError;
@@ -90,6 +92,19 @@ Deno.serve(async request => {
     }
 
     const conversationId = String(body.conversationId ?? '');
+    if (action === 'user_typing') {
+      const accessToken = String(body.accessToken ?? '');
+      const { data } = await db.from('support_conversations').select('id').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle();
+      if (!data) return json({ error: 'Диалог не найден' }, 404);
+      const until = body.typing ? new Date(Date.now() + 3500).toISOString() : null;
+      await db.from('support_conversations').update({ user_typing_until: until }).eq('id', conversationId);
+      return json({ ok: true });
+    }
+    if (action === 'admin_typing') {
+      const until = body.typing ? new Date(Date.now() + 3500).toISOString() : null;
+      await db.from('support_conversations').update({ manager_typing_until: until }).eq('id', conversationId);
+      return json({ ok: true });
+    }
     if (action === 'admin_send') {
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       if (!text || text.length > 2000) return json({ error: 'Некорректное сообщение' }, 400);

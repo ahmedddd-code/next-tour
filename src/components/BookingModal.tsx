@@ -36,6 +36,8 @@ export function BookingModal({ tour, onClose }: Props) {
   const [comment, setComment] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [sent, setSent] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const inputClass = 'h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-navy outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10';
 
   useEffect(() => {
@@ -46,23 +48,15 @@ export function BookingModal({ tour, onClose }: Props) {
     return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', closeOnEscape); };
   }, [onClose]);
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     if (phoneDigits.length !== 10) { setPhoneError('Введите 10 цифр номера телефона.'); return; }
-    addBooking({
-      tourId: tour.id,
-      tourHotel: tour.hotel,
-      tourDestination: `${tour.country}, ${tour.resort}`,
-      tourPrice: tour.price,
-      name: name.trim(),
-      phone: formatPhone(phoneDigits),
-      email: email.trim(),
-      tripDate,
-      adults,
-      children,
-      comment: comment.trim(),
-    });
-    setSent(true);
+    setSubmitting(true); setSubmitError('');
+    try {
+      await addBooking({ tourId: tour.id, tourHotel: tour.hotel, tourDestination: `${tour.country}, ${tour.resort}`, tourPrice: tour.price, name: name.trim(), phone: formatPhone(phoneDigits), email: email.trim(), tripDate, adults, children, comment: comment.trim() });
+      setSent(true);
+    } catch { setSubmitError('Не удалось отправить заявку. Проверьте интернет и попробуйте ещё раз.'); }
+    finally { setSubmitting(false); }
   }
 
   return <div onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }} className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-navy/70 p-3 backdrop-blur-sm sm:p-6">
@@ -84,7 +78,8 @@ export function BookingModal({ tour, onClose }: Props) {
           <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Дети</span><input required type="number" min="0" max="20" value={children} onChange={event => setChildren(Number(event.target.value))} className={inputClass}/></label>
           <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold text-slate-500">Комментарий</span><textarea rows={3} value={comment} onChange={event => setComment(event.target.value)} placeholder="Дополнительные пожелания" className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm font-semibold text-navy outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10"/></label>
         </div>
-        <button className="mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-brand font-extrabold text-white transition hover:bg-brand-dark hover:shadow-lg hover:shadow-brand/20"><Send className="size-4"/>Отправить заявку</button>
+        {submitError && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-600">{submitError}</p>}
+        <button disabled={submitting} className="mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-brand font-extrabold text-white transition hover:bg-brand-dark hover:shadow-lg hover:shadow-brand/20 disabled:opacity-60"><Send className="size-4"/>{submitting ? 'Отправляем…' : 'Отправить заявку'}</button>
         <p className="mt-3 text-center text-[11px] leading-4 text-slate-400">Нажимая кнопку, вы соглашаетесь с политикой конфиденциальности</p>
       </form>}
     </div>

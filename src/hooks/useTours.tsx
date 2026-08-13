@@ -1,61 +1,24 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { tours as defaultTours, type Tour } from '../data/tours';
+import { ADMIN_PASSWORD, invokeSiteData } from '../lib/siteData';
 
-const STORAGE_KEY = 'nexttour:tours:kzt:v2';
-const LEGACY_STORAGE_KEY = 'nexttour:tours:v1';
-const EXPANDED_CATALOG_KEY = 'nexttour:expanded-catalog:v1';
-
-type ToursContextValue = {
-  tours: Tour[];
-  addTour: (tour: Tour) => void;
-  updateTour: (tour: Tour) => void;
-  deleteTour: (id: string) => void;
-  resetTours: () => void;
-};
-
+type ToursContextValue = { tours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; resetTours: () => Promise<void> };
 const ToursContext = createContext<ToursContextValue | null>(null);
 
-function loadTours() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const savedTours = JSON.parse(saved) as Tour[];
-      if (!localStorage.getItem(EXPANDED_CATALOG_KEY)) {
-        const savedIds = new Set(savedTours.map(tour => tour.id));
-        localStorage.setItem(EXPANDED_CATALOG_KEY, 'done');
-        return [...savedTours, ...defaultTours.filter(tour => !savedIds.has(tour.id))];
-      }
-      return savedTours;
-    }
-    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (legacy) return (JSON.parse(legacy) as Tour[]).map(tour => ({
-      ...tour,
-      departureCity: tour.departureCity === 'Москва' ? 'Алматы' : tour.departureCity,
-      price: tour.price < 500_000 ? tour.price * 10 : tour.price,
-      oldPrice: tour.oldPrice && tour.oldPrice < 500_000 ? tour.oldPrice * 10 : tour.oldPrice,
-    }));
-    localStorage.setItem(EXPANDED_CATALOG_KEY, 'done');
-    return defaultTours;
-  } catch {
-    return defaultTours;
-  }
-}
-
 export function ToursProvider({ children }: { children: ReactNode }) {
-  const [tours, setTours] = useState<Tour[]>(loadTours);
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(tours)); }, [tours]);
+  const [tours, setTours] = useState<Tour[]>(defaultTours);
+  const load = useCallback(async () => {
+    try { const data = await invokeSiteData({ action: 'list_tours' }); const cloudTours = data.tours as Tour[]; if (cloudTours.length) setTours(cloudTours); }
+    catch { /* Встроенный каталог остаётся доступен при временном отсутствии сети. */ }
+  }, []);
+  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 5000); return () => window.clearInterval(timer); }, [load]);
+  const save = async (tour: Tour) => { await invokeSiteData({ action: 'admin_upsert_tour', adminPassword: ADMIN_PASSWORD, tour }); await load(); };
   const value = useMemo<ToursContextValue>(() => ({
-    tours,
-    addTour: tour => setTours(current => [tour, ...current]),
-    updateTour: tour => setTours(current => current.map(item => item.id === tour.id ? tour : item)),
-    deleteTour: id => setTours(current => current.filter(item => item.id !== id)),
-    resetTours: () => setTours(defaultTours),
-  }), [tours]);
+    tours, addTour: save, updateTour: save,
+    deleteTour: async id => { await invokeSiteData({ action: 'admin_delete_tour', adminPassword: ADMIN_PASSWORD, id }); await load(); },
+    resetTours: async () => { await invokeSiteData({ action: 'admin_reset_tours', adminPassword: ADMIN_PASSWORD, tours: defaultTours }); await load(); },
+  }), [tours, load]);
   return <ToursContext.Provider value={value}>{children}</ToursContext.Provider>;
 }
 
-export function useTours() {
-  const context = useContext(ToursContext);
-  if (!context) throw new Error('useTours должен использоваться внутри ToursProvider');
-  return context;
-}
+export function useTours() { const context = useContext(ToursContext); if (!context) throw new Error('useTours должен использоваться внутри ToursProvider'); return context; }
