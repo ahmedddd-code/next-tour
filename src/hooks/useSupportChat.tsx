@@ -8,7 +8,7 @@ type ChatCredentials = { conversationId: string; accessToken: string };
 
 export type SupportMessage = { id: string; role: 'user' | 'manager' | 'system'; text: string; createdAt: string };
 export type SupportContact = { name: string; phone: string; email: string; subject: string };
-export type SupportConversation = { id: string; status: 'open' | 'closed'; createdAt: string; updatedAt: string; contact?: SupportContact; messages: SupportMessage[]; userTyping?: boolean; managerTyping?: boolean };
+export type SupportConversation = { id: string; status: 'open' | 'pending_close' | 'closed'; createdAt: string; updatedAt: string; contact?: SupportContact; messages: SupportMessage[]; userTyping?: boolean; managerTyping?: boolean };
 type ContextValue = {
   conversations: SupportConversation[];
   loaded: boolean;
@@ -16,6 +16,7 @@ type ContextValue = {
   error: string;
   pendingUserMessages: SupportMessage[];
   sendUserMessage: (text: string, contact?: SupportContact) => Promise<void>;
+  respondToCloseRequest: (resolved: boolean) => Promise<void>;
   sendManagerMessage: (conversationId: string, text: string) => Promise<void>;
   toggleConversationStatus: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
@@ -108,6 +109,16 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
         setPendingUserMessages(current => current.filter(message => message.id !== pending.id));
       } catch { setPendingUserMessages(current => current.filter(message => message.id !== pending.id)); setError('Не удалось отправить сообщение. Проверьте подключение к интернету или попробуйте позже.'); throw new Error('support-send-failed'); }
     },
+    respondToCloseRequest: async resolved => {
+      if (!credentials) throw new Error('support-conversation-not-found');
+      try {
+        await invoke({ action: 'user_close_response', resolved, ...credentials });
+        await loadUserConversation(credentials);
+      } catch {
+        setError('Не удалось отправить ответ. Попробуйте ещё раз.');
+        throw new Error('support-close-response-failed');
+      }
+    },
     sendManagerMessage: async (conversationId, text) => {
       const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'manager', text, createdAt: new Date().toISOString() };
       setConversations(current => current.map(conversation => conversation.id === conversationId ? { ...conversation, messages: [...conversation.messages, pending] } : conversation));
@@ -116,7 +127,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     },
     toggleConversationStatus: async conversationId => {
       const conversation = conversations.find(item => item.id === conversationId);
-      try { await invoke({ action: 'admin_status', adminPassword: ADMIN_PASSWORD, conversationId, status: conversation?.status === 'open' ? 'closed' : 'open' }); await loadAdminConversations(); }
+      try { await invoke({ action: 'admin_status', adminPassword: ADMIN_PASSWORD, conversationId, status: conversation?.status === 'open' ? 'pending_close' : 'open' }); await loadAdminConversations(); }
       catch { setError('Не удалось изменить статус диалога.'); }
     },
     deleteConversation: async conversationId => {

@@ -8,7 +8,7 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type ConversationRow = { id: string; status: 'open' | 'closed'; created_at: string; updated_at: string; contact?: Record<string, string>; user_typing_until?: string | null; manager_typing_until?: string | null };
+type ConversationRow = { id: string; status: 'open' | 'pending_close' | 'closed'; created_at: string; updated_at: string; contact?: Record<string, string>; user_typing_until?: string | null; manager_typing_until?: string | null };
 type MessageRow = { id: string; conversation_id: string; sender: 'user' | 'manager' | 'system'; text: string; created_at: string };
 
 function json(body: unknown, status = 200) {
@@ -104,6 +104,24 @@ Deno.serve(async request => {
       await db.from('support_conversations').update({ user_typing_until: until }).eq('id', conversationId);
       return json({ ok: true });
     }
+    if (action === 'user_close_response') {
+      const accessToken = String(body.accessToken ?? '');
+      const { data: conversation } = await db.from('support_conversations').select('id,status').eq('id', conversationId).eq('access_token_hash', await hashToken(accessToken)).maybeSingle<{ id: string; status: string }>();
+      if (!conversation) return json({ error: 'Диалог не найден' }, 404);
+      if (conversation.status !== 'pending_close') return json({ error: 'Подтверждение закрытия сейчас не требуется' }, 409);
+
+      const resolved = body.resolved === true;
+      const status = resolved ? 'closed' : 'open';
+      const text = resolved
+        ? 'Клиент подтвердил, что вопрос решён. Чат закрыт.'
+        : 'Нет, мой вопрос ещё не решён. Мне нужна дополнительная помощь.';
+      const sender = resolved ? 'system' : 'user';
+      const { error: messageError } = await db.from('support_messages').insert({ conversation_id: conversationId, sender, text });
+      if (messageError) throw messageError;
+      const { error: updateError } = await db.from('support_conversations').update({ status, updated_at: new Date().toISOString(), user_typing_until: null }).eq('id', conversationId);
+      if (updateError) throw updateError;
+      return json({ ok: true, status });
+    }
     if (action === 'admin_typing') {
       const until = body.typing ? new Date(Date.now() + 3500).toISOString() : null;
       await db.from('support_conversations').update({ manager_typing_until: until }).eq('id', conversationId);
@@ -118,7 +136,19 @@ Deno.serve(async request => {
       return json({ ok: true });
     }
     if (action === 'admin_status') {
-      const status = body.status === 'closed' ? 'closed' : 'open';
+      const status = body.status === 'pending_close' ? 'pending_close' : 'open';
+      if (status === 'pending_close') {
+        const { data: conversation } = await db.from('support_conversations').select('status').eq('id', conversationId).maybeSingle<{ status: string }>();
+        if (!conversation) return json({ error: 'Диалог не найден' }, 404);
+        if (conversation.status !== 'pending_close') {
+          const { error: messageError } = await db.from('support_messages').insert({
+            conversation_id: conversationId,
+            sender: 'system',
+            text: 'Менеджер предлагает завершить диалог. Ваш вопрос решён?',
+          });
+          if (messageError) throw messageError;
+        }
+      }
       const { error } = await db.from('support_conversations').update({ status, updated_at: new Date().toISOString() }).eq('id', conversationId);
       if (error) throw error;
       return json({ ok: true });
