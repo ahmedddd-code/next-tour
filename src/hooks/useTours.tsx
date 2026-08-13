@@ -8,8 +8,9 @@ const ToursContext = createContext<ToursContextValue | null>(null);
 const refreshInterval = () => 5 * 60 * 1000;
 
 async function invokeToursData(body: Record<string, unknown>, admin = false) {
-  const { ADMIN_PASSWORD, invokeSiteData } = await import('../lib/siteData');
-  return invokeSiteData(admin ? { ...body, adminPassword: ADMIN_PASSWORD } : body);
+  const { invokeSiteData } = await import('../lib/siteData');
+  const { getAdminToken } = await import('../lib/adminSession');
+  return invokeSiteData(admin ? { ...body, adminToken: getAdminToken() } : body);
 }
 
 export function ToursProvider({ children }: { children: ReactNode }) {

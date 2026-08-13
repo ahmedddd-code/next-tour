@@ -2,7 +2,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const adminPassword = Deno.env.get('SUPPORT_ADMIN_PASSWORD');
 const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -39,15 +38,18 @@ function serialize(conversation: ConversationRow, messages: MessageRow[]) {
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'Используйте POST' }, 405);
-  if (!supabaseUrl || !serviceRoleKey || !adminPassword) return json({ error: 'Чат поддержки не настроен на сервере' }, 503);
+  if (!supabaseUrl || !serviceRoleKey) return json({ error: 'Чат поддержки не настроен на сервере' }, 503);
   const db = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   try {
     const body = await request.json() as Record<string, unknown>;
     const action = typeof body.action === 'string' ? body.action : '';
-    const suppliedPassword = typeof body.adminPassword === 'string' ? body.adminPassword : '';
     const requiresAdmin = action.startsWith('admin_');
-    if (requiresAdmin && suppliedPassword !== adminPassword) return json({ error: 'Неверный пароль администратора' }, 401);
+    if (requiresAdmin) {
+      const suppliedToken = typeof body.adminToken === 'string' ? body.adminToken : '';
+      const { data: session } = suppliedToken ? await db.from('admin_sessions').select('id').eq('token_hash', await hashToken(suppliedToken)).gt('expires_at', new Date().toISOString()).maybeSingle() : { data: null };
+      if (!session) return json({ error: 'Требуется вход администратора' }, 401);
+    }
 
     if (action === 'user_send') {
       const text = typeof body.text === 'string' ? body.text.trim() : '';

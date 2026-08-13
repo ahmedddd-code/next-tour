@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { useAutoRefresh } from './useAutoRefresh';
+import { getAdminToken } from '../lib/adminSession';
 
 const CREDENTIALS_KEY = 'nexttour:support-chat-credentials:v1';
-const ADMIN_PASSWORD = 'nexttour123';
 type ChatCredentials = { conversationId: string; accessToken: string };
 
 export type SupportMessage = { id: string; role: 'user' | 'manager' | 'system'; text: string; createdAt: string };
@@ -15,6 +15,7 @@ type ContextValue = {
   currentConversationId: string | null;
   error: string;
   pendingUserMessages: SupportMessage[];
+  startNewConversation: () => void;
   sendUserMessage: (text: string, contact?: SupportContact) => Promise<void>;
   respondToCloseRequest: (resolved: boolean) => Promise<void>;
   sendManagerMessage: (conversationId: string, text: string) => Promise<void>;
@@ -66,7 +67,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   const loadAdminConversations = useCallback(async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const data = await invoke({ action: 'admin_list', adminPassword: ADMIN_PASSWORD });
+      const data = await invoke({ action: 'admin_list', adminToken: getAdminToken() });
       const next = (data.conversations as SupportConversation[]) ?? [];
       setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
       setLoaded(true);
@@ -75,7 +76,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (sessionStorage.getItem('nexttour:admin-authenticated') === 'true') await loadAdminConversations();
+    if (getAdminToken()) await loadAdminConversations();
     else await loadUserConversation();
   }, [loadAdminConversations, loadUserConversation]);
   useAutoRefresh(refresh, refreshInterval);
@@ -89,7 +90,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   const setManagerTyping = useCallback((conversationId: string, typing: boolean) => {
     if (typing && Date.now() - lastTypingUpdate.current < 1500) return;
     lastTypingUpdate.current = Date.now();
-    void invoke({ action: 'admin_typing', adminPassword: ADMIN_PASSWORD, conversationId, typing });
+    void invoke({ action: 'admin_typing', adminToken: getAdminToken(), conversationId, typing });
   }, []);
 
   const value = useMemo<ContextValue>(() => ({
@@ -97,6 +98,13 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     currentConversationId: credentials?.conversationId ?? null,
     error,
     pendingUserMessages,
+    startNewConversation: () => {
+      localStorage.removeItem(CREDENTIALS_KEY);
+      setCredentials(null);
+      setConversations([]);
+      setPendingUserMessages([]);
+      setError('');
+    },
     sendUserMessage: async (text, contact) => {
       const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'user', text, createdAt: new Date().toISOString() };
       setPendingUserMessages(current => [...current, pending]);
@@ -122,16 +130,16 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     sendManagerMessage: async (conversationId, text) => {
       const pending: SupportMessage = { id: `pending-${crypto.randomUUID()}`, role: 'manager', text, createdAt: new Date().toISOString() };
       setConversations(current => current.map(conversation => conversation.id === conversationId ? { ...conversation, messages: [...conversation.messages, pending] } : conversation));
-      try { await invoke({ action: 'admin_send', adminPassword: ADMIN_PASSWORD, conversationId, text }); await loadAdminConversations(); }
+      try { await invoke({ action: 'admin_send', adminToken: getAdminToken(), conversationId, text }); await loadAdminConversations(); }
       catch { setError('Ответ не отправлен. Попробуйте ещё раз.'); }
     },
     toggleConversationStatus: async conversationId => {
       const conversation = conversations.find(item => item.id === conversationId);
-      try { await invoke({ action: 'admin_status', adminPassword: ADMIN_PASSWORD, conversationId, status: conversation?.status === 'open' ? 'pending_close' : 'open' }); await loadAdminConversations(); }
+      try { await invoke({ action: 'admin_status', adminToken: getAdminToken(), conversationId, status: conversation?.status === 'open' ? 'pending_close' : 'open' }); await loadAdminConversations(); }
       catch { setError('Не удалось изменить статус диалога.'); }
     },
     deleteConversation: async conversationId => {
-      try { await invoke({ action: 'admin_delete', adminPassword: ADMIN_PASSWORD, conversationId }); await loadAdminConversations(); }
+      try { await invoke({ action: 'admin_delete', adminToken: getAdminToken(), conversationId }); await loadAdminConversations(); }
       catch { setError('Не удалось удалить диалог.'); }
     },
     setUserTyping,

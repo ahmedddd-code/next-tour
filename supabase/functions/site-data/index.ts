@@ -6,6 +6,11 @@ const password = Deno.env.get('SUPPORT_ADMIN_PASSWORD');
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
+async function hashToken(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'Используйте POST' }, 405);
@@ -14,8 +19,23 @@ Deno.serve(async request => {
   try {
     const body = await request.json() as Record<string, unknown>;
     const action = String(body.action ?? '');
-    const admin = String(body.adminPassword ?? '') === password;
-    if (action.startsWith('admin_') && !admin) return json({ error: 'Неверный пароль администратора' }, 401);
+    if (action === 'admin_login') {
+      if (String(body.password ?? '') !== password) return json({ error: 'Неверный пароль администратора' }, 401);
+      const adminToken = crypto.randomUUID() + crypto.randomUUID();
+      const { error } = await db.from('admin_sessions').insert({ token_hash: await hashToken(adminToken), expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString() });
+      if (error) throw error;
+      return json({ adminToken });
+    }
+
+    const adminToken = String(body.adminToken ?? '');
+    const { data: session } = adminToken ? await db.from('admin_sessions').select('id').eq('token_hash', await hashToken(adminToken)).gt('expires_at', new Date().toISOString()).maybeSingle<{ id: string }>() : { data: null };
+    const admin = Boolean(session);
+    if (action === 'admin_session') return admin ? json({ ok: true }) : json({ error: 'Сессия администратора истекла' }, 401);
+    if (action === 'admin_logout') {
+      if (adminToken) await db.from('admin_sessions').delete().eq('token_hash', await hashToken(adminToken));
+      return json({ ok: true });
+    }
+    if (action.startsWith('admin_') && !admin) return json({ error: 'Требуется вход администратора' }, 401);
 
     if (action === 'list_tours') {
       const rows: Array<{ data: unknown }> = [];
