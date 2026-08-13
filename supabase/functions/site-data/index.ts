@@ -11,6 +11,16 @@ async function hashToken(token: string) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+async function isRateLimited(db: ReturnType<typeof createClient>, request: Request, action: string, seconds: number) {
+  const fingerprint = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('cf-connecting-ip') || 'unknown';
+  const fingerprintHash = await hashToken(fingerprint);
+  const since = new Date(Date.now() - seconds * 1000).toISOString();
+  const { count } = await db.from('submission_rate_limits').select('*', { count: 'exact', head: true }).eq('fingerprint_hash', fingerprintHash).eq('action', action).gte('created_at', since);
+  if ((count ?? 0) > 0) return true;
+  await db.from('submission_rate_limits').insert({ fingerprint_hash: fingerprintHash, action });
+  return false;
+}
+
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'Используйте POST' }, 405);
@@ -55,8 +65,13 @@ Deno.serve(async request => {
       const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
       const { data: authData } = await db.auth.getUser(token);
       if (!authData.user) return json({ error: 'Войдите в аккаунт для бронирования' }, 401);
-      const data = { ...(body.data as Record<string, unknown>), userId: authData.user.id };
-      if (!data || typeof data.name !== 'string' || typeof data.phone !== 'string') return json({ error: 'Заполните имя и телефон' }, 400);
+      if (await isRateLimited(db, request, `booking:${authData.user.id}`, 30)) return json({ error: 'Заявка уже отправляется. Подождите 30 секунд.' }, 429);
+      const source = body.data && typeof body.data === 'object' ? body.data as Record<string, unknown> : {};
+      const data = { ...source, userId: authData.user.id };
+      const validPhone = /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/.test(String(data.phone ?? ''));
+      const validEmail = /^\S+@\S+\.\S+$/.test(String(data.email ?? ''));
+      const adults = Number(data.adults), children = Number(data.children), price = Number(data.tourPrice);
+      if (String(data.name ?? '').trim().length < 2 || !validPhone || !validEmail || !String(data.tourId ?? '') || !String(data.tourHotel ?? '') || !Number.isFinite(price) || price < 0 || !Number.isInteger(adults) || adults < 1 || adults > 20 || !Number.isInteger(children) || children < 0 || children > 20 || String(data.comment ?? '').length > 2000) return json({ error: 'Проверьте данные заявки' }, 400);
       const { error } = await db.from('app_bookings').insert({ data }); if (error) throw error; return json({ ok: true });
     }
     if (action === 'user_list_bookings') {
@@ -69,7 +84,8 @@ Deno.serve(async request => {
     }
     if (action === 'create_review') {
       const name = String(body.name ?? '').trim(), text = String(body.text ?? '').trim(), rating = Number(body.rating);
-      if (!name || text.length < 10 || rating < 1 || rating > 5) return json({ error: 'Проверьте данные отзыва' }, 400);
+      if (await isRateLimited(db, request, 'review', 60)) return json({ error: 'Следующий отзыв можно отправить через минуту.' }, 429);
+      if (name.length < 2 || name.length > 120 || text.length < 10 || text.length > 2000 || !Number.isInteger(rating) || rating < 1 || rating > 5) return json({ error: 'Проверьте данные отзыва' }, 400);
       const { error } = await db.from('app_reviews').insert({ name, text, rating }); if (error) throw error; return json({ ok: true });
     }
     if (action === 'admin_list_bookings') {

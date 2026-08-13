@@ -3,6 +3,8 @@ import { useEffect } from 'react';
 export function ScreamerShortcut() {
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
       if (event.key === 'F9' && event.shiftKey) {
         event.preventDefault();
         window.open('/screamer', '_blank', 'noopener,noreferrer');

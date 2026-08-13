@@ -22,6 +22,7 @@ type AuthContextValue = {
   modalOpen: boolean;
   authTab: AuthTab;
   registrationSuccess: boolean;
+  passwordRecovery: boolean;
   openAuth: (tab?: AuthTab) => void;
   requestAuth: (onAuthenticated: () => void, tab?: AuthTab) => void;
   closeAuth: () => void;
@@ -30,6 +31,7 @@ type AuthContextValue = {
   loginWithGoogle: () => Promise<string | null>;
   register: (data: RegisterData) => Promise<string | null>;
   resetPassword: (email: string) => Promise<string | null>;
+  updatePassword: (password: string) => Promise<string | null>;
   logout: () => Promise<void>;
 };
 
@@ -60,13 +62,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<AuthTab>('login');
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const pendingAction = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
     void import('../lib/supabase').then(async ({ supabase }) => {
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => { if (active) setUser(session?.user ?? null); });
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!active) return;
+        setUser(session?.user ?? null);
+        if (event === 'PASSWORD_RECOVERY') { setPasswordRecovery(true); setModalOpen(true); }
+      });
       unsubscribe = () => data.subscription.unsubscribe();
       const { data: sessionData } = await supabase.auth.getSession();
       if (active) { setUser(sessionData.session?.user ?? null); setLoading(false); }
@@ -93,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     modalOpen,
     authTab,
     registrationSuccess,
+    passwordRecovery,
     openAuth: (tab = 'login') => { setAuthTab(tab); setModalOpen(true); },
     requestAuth: (action, tab = 'register') => { if (user) action(); else { pendingAction.current = action; setAuthTab(tab); setModalOpen(true); } },
     closeAuth: () => { pendingAction.current = null; setModalOpen(false); },
@@ -136,8 +144,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: window.location.origin });
       return error ? authError(error.message) : null;
     },
+    updatePassword: async password => {
+      if (password.length < 8) return 'Пароль должен содержать не менее 8 символов.';
+      const { supabase } = await import('../lib/supabase');
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return authError(error.message);
+      setPasswordRecovery(false);
+      setModalOpen(false);
+      return null;
+    },
     logout: async () => { const { supabase } = await import('../lib/supabase'); await supabase.auth.signOut(); setUser(null); },
-  }), [user, loading, modalOpen, authTab, registrationSuccess, finishAuth]);
+  }), [user, loading, modalOpen, authTab, registrationSuccess, passwordRecovery, finishAuth]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

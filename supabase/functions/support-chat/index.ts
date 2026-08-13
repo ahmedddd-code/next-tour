@@ -20,6 +20,16 @@ async function hashToken(token: string) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+async function isRateLimited(db: ReturnType<typeof createClient>, request: Request, conversationId: string) {
+  const fingerprint = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('cf-connecting-ip') || 'unknown';
+  const fingerprintHash = await hashToken(`${fingerprint}:${conversationId || 'new-chat'}`);
+  const since = new Date(Date.now() - 3_000).toISOString();
+  const { count } = await db.from('submission_rate_limits').select('*', { count: 'exact', head: true }).eq('fingerprint_hash', fingerprintHash).eq('action', 'support_message').gte('created_at', since);
+  if ((count ?? 0) >= 2) return true;
+  await db.from('submission_rate_limits').insert({ fingerprint_hash: fingerprintHash, action: 'support_message' });
+  return false;
+}
+
 function serialize(conversation: ConversationRow, messages: MessageRow[]) {
   return {
     id: conversation.id,
@@ -55,6 +65,7 @@ Deno.serve(async request => {
       const text = typeof body.text === 'string' ? body.text.trim() : '';
       if (!text || text.length > 2000) return json({ error: 'Сообщение должно содержать от 1 до 2000 символов' }, 400);
       let conversationId = typeof body.conversationId === 'string' ? body.conversationId : '';
+      if (await isRateLimited(db, request, conversationId)) return json({ error: 'Слишком много сообщений. Подождите несколько секунд.' }, 429);
       let accessToken = typeof body.accessToken === 'string' ? body.accessToken : '';
       let isNew = false;
 
