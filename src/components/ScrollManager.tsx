@@ -1,27 +1,27 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 export function ScrollManager() {
   const location = useLocation();
-  const initialLocationKey = useRef(location.key);
 
   useLayoutEffect(() => {
     window.history.scrollRestoration = 'manual';
+    const state = location.state as { scrollTo?: string } | null;
+    const targetId = state?.scrollTo ?? location.hash.replace(/^#/, '');
+    if (!targetId) { window.scrollTo({ top: 0, behavior: 'instant' }); return; }
 
-    if (location.key === initialLocationKey.current) {
-      if (location.hash) {
-        window.history.replaceState(window.history.state, '', `${location.pathname}${location.search}`);
-      }
-      window.scrollTo({ top: 0, behavior: 'instant' });
-      return;
-    }
-
-    if (location.hash) {
-      requestAnimationFrame(() => document.querySelector(location.hash)?.scrollIntoView());
-    } else {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-    }
-  }, [location.key, location.pathname, location.search, location.hash]);
+    let cancelled = false;
+    let attempts = 0;
+    const scrollWhenReady = () => {
+      if (cancelled) return;
+      const target = document.getElementById(targetId);
+      if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      attempts += 1;
+      if (attempts < 40) window.setTimeout(scrollWhenReady, 25);
+    };
+    scrollWhenReady();
+    return () => { cancelled = true; };
+  }, [location.key, location.pathname, location.search, location.hash, location.state]);
 
   return null;
 }

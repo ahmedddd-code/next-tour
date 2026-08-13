@@ -5,14 +5,9 @@ import { Logo } from './Logo';
 import { DepartureCitySelector } from './DepartureCitySelector';
 import { useAuth } from '../hooks/useAuth';
 import { UserMenu } from './UserMenu';
+import { SectionLink } from './SectionLink';
 
-const links = [
-  ['Туры', '/tours'],
-  ['Направления', '/#destinations'],
-  ['AI-помощник', '/#ai'],
-  ['Отзывы', '/#reviews'],
-  ['Контакты', '/#contacts'],
-];
+const sectionLinks = [['Направления', 'destinations'], ['AI-помощник', 'ai'], ['Отзывы', 'reviews'], ['Контакты', 'contacts']];
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -22,7 +17,8 @@ export function Header() {
       <div className="section-shell flex h-20 items-center justify-between">
         <Logo light />
         <nav className="hidden items-center gap-7 lg:flex">
-          {links.map(([label, href]) => <Link key={href} to={href} className="text-sm font-semibold text-white/85 transition hover:text-white">{label}</Link>)}
+          <Link to="/tours" className="text-sm font-semibold text-white/85 transition hover:text-white">Туры</Link>
+          {sectionLinks.map(([label, section]) => <SectionLink key={section} section={section} className="text-sm font-semibold text-white/85 transition hover:text-white">{label}</SectionLink>)}
         </nav>
         <div className="hidden items-center gap-3 sm:flex">
           <DepartureCitySelector variant="header" className="py-2"/>
@@ -36,7 +32,8 @@ export function Header() {
       </div>
       {open && <nav className="mx-4 mb-4 flex flex-col rounded-2xl bg-white p-3 shadow-2xl sm:hidden">
         <DepartureCitySelector className="mb-2 w-full"/>
-        {links.map(([label, href]) => <Link key={href} to={href} onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">{label}</Link>)}
+        <Link to="/tours" onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">Туры</Link>
+        {sectionLinks.map(([label, section]) => <SectionLink key={section} section={section} onNavigate={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">{label}</SectionLink>)}
         <div className="mt-2 border-t border-slate-100 pt-3">{user ? <UserMenu/> : <button onClick={() => { setOpen(false); openAuth('login'); }} className="w-full rounded-xl bg-navy px-4 py-3 text-left font-black text-white">Войти в аккаунт</button>}</div>
       </nav>}
     </header>

@@ -1,5 +1,6 @@
 import { ArrowRight, Bot, Check, Play } from 'lucide-react';
 import { Header } from './Header';
+import { SectionLink } from './SectionLink';
 
 export function Hero() {
   return (
@@ -17,8 +18,8 @@ export function Hero() {
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-white/75 sm:text-lg">Никаких бесконечных вкладок и сомнений. Расскажите, как хотите отдохнуть — мы найдём ваш идеальный вариант.</p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <a href="#search" className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-7 py-4 font-extrabold transition hover:bg-brand-dark">Подобрать тур <ArrowRight className="size-5 transition group-hover:translate-x-1" /></a>
-            <a href="#ai" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-7 py-4 font-extrabold backdrop-blur-md transition hover:bg-white/20"><Bot className="size-5" /> Спросить AI</a>
+            <SectionLink section="search" className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand px-7 py-4 font-extrabold transition hover:bg-brand-dark">Подобрать тур <ArrowRight className="size-5 transition group-hover:translate-x-1" /></SectionLink>
+            <SectionLink section="ai" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-7 py-4 font-extrabold backdrop-blur-md transition hover:bg-white/20"><Bot className="size-5" /> Спросить AI</SectionLink>
           </div>
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-white/75">
             {['Без скрытых доплат', 'Поддержка 24/7', 'Проверенные отели'].map(item => <span key={item} className="flex items-center gap-2"><Check className="size-4 text-brand" />{item}</span>)}

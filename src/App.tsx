@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ScrollManager } from './components/ScrollManager';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
@@ -31,5 +31,5 @@ function PublicOverlays() {
 }
 
 export default function App() {
-  return <><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><PublicOverlays/><AuthExperience/></>;
+  return <><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/search" element={<Navigate to="/" replace state={{ scrollTo: 'search' }}/>}/><Route path="/ai" element={<Navigate to="/" replace state={{ scrollTo: 'ai' }}/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><PublicOverlays/><AuthExperience/></>;
 }
