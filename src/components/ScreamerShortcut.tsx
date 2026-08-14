@@ -5,6 +5,9 @@ const PresentationOverlay = lazy(() => import('../presentation/PresentationOverl
 export function ScreamerShortcut() {
   const [presentationOpen, setPresentationOpen] = useState(false);
   useEffect(() => {
+    const pressedKeys = new Set<string>();
+    let gameOpened = false;
+
     function handleShortcut(event: KeyboardEvent) {
       const isPresentationShortcut = event.shiftKey
         && (event.key === 'F1' || event.code === 'F1' || event.keyCode === 112);
@@ -19,6 +22,16 @@ export function ScreamerShortcut() {
 
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
+
+      pressedKeys.add(event.code);
+      const isGameShortcut = pressedKeys.has('KeyA') && pressedKeys.has('Quote');
+      if (isGameShortcut && !gameOpened) {
+        event.preventDefault();
+        gameOpened = true;
+        window.open('/game', '_blank', 'noopener,noreferrer');
+        return;
+      }
+
       if (event.key === 'F9' && event.shiftKey) {
         event.preventDefault();
         window.open('/screamer', '_blank', 'noopener,noreferrer');
@@ -28,8 +41,22 @@ export function ScreamerShortcut() {
         window.location.assign('/admin');
       }
     }
+    function handleKeyUp(event: KeyboardEvent) {
+      pressedKeys.delete(event.code);
+      if (!pressedKeys.has('KeyA') || !pressedKeys.has('Quote')) gameOpened = false;
+    }
+    function clearPressedKeys() {
+      pressedKeys.clear();
+      gameOpened = false;
+    }
     window.addEventListener('keydown', handleShortcut, { capture: true });
-    return () => window.removeEventListener('keydown', handleShortcut, { capture: true });
+    window.addEventListener('keyup', handleKeyUp, { capture: true });
+    window.addEventListener('blur', clearPressedKeys);
+    return () => {
+      window.removeEventListener('keydown', handleShortcut, { capture: true });
+      window.removeEventListener('keyup', handleKeyUp, { capture: true });
+      window.removeEventListener('blur', clearPressedKeys);
+    };
   }, []);
   return presentationOpen ? <Suspense fallback={null}><PresentationOverlay onClose={() => setPresentationOpen(false)}/></Suspense> : null;
 }

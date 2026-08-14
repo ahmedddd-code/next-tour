@@ -1,0 +1,21 @@
+.dash-page { min-height: 100vh; box-sizing: border-box; overflow: hidden; padding: 22px clamp(16px,4vw,56px) 36px; color: #fff; background: radial-gradient(circle at 50% -10%,#7251d5 0,#121b43 46%,#080e26 100%); font-family: Inter,system-ui,sans-serif; }
+.dash-header { width: min(1100px,100%); margin: 0 auto 24px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+.dash-header a { width: max-content; color: #bcd0ff; text-decoration: none; font-weight: 800; }
+.dash-header div { text-align: center; }
+.dash-header div span { color: #60f0d0; font-size: 11px; font-weight: 900; letter-spacing: .35em; }
+.dash-header h1 { margin: 2px 0 0; font-size: clamp(27px,4vw,48px); line-height: 1; letter-spacing: .08em; text-shadow: 0 5px 0 #49268a; }
+.dash-key-hint { justify-self: end; border: 1px solid #ffffff40; border-radius: 10px; padding: 8px 12px; color: #bcd0ff; font-weight: 900; }
+.dash-shell { width: min(1100px,100%); margin: auto; text-align: center; }
+.dash-hud { display: flex; justify-content: space-between; margin: 0 4px 10px; color: #bcd0ff; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+.dash-hud strong { margin-left: 7px; color: #fff; font-size: 18px; }
+.dash-stage { position: relative; overflow: hidden; border: 4px solid #ffffff; border-radius: 18px; box-shadow: 0 18px 0 #080e26,0 28px 60px #0008; cursor: pointer; touch-action: manipulation; }
+.dash-stage canvas { display: block; width: 100%; aspect-ratio: 16/7; }
+.dash-overlay { position: absolute; inset: 0; display: grid; place-content: center; padding: 20px; background: #0b1234a8; backdrop-filter: blur(3px); }
+.dash-overlay h2 { margin: 0; font-size: clamp(25px,5vw,58px); letter-spacing: .06em; text-shadow: 0 5px 0 #49268a; }
+.dash-overlay p { margin: 10px 0 20px; color: #dce5ff; font-weight: 700; }
+.dash-overlay button { justify-self: center; cursor: pointer; border: 3px solid #fff; border-radius: 10px; background: #60f0d0; padding: 12px 28px; color: #152143; font-weight: 1000; box-shadow: 0 6px 0 #238e8c; }
+.dash-overlay button:active { translate: 0 4px; box-shadow: 0 2px 0 #238e8c; }
+.dash-controls { margin: 34px 0 12px; color: #bcd0ff; font-size: 13px; }
+.dash-controls kbd { border: 1px solid #ffffff50; border-radius: 5px; background: #ffffff10; padding: 3px 7px; color: #fff; font-weight: 800; }
+.dash-restart { cursor: pointer; border: 0; background: none; color: #60f0d0; text-decoration: underline; }
+@media (max-width: 600px) { .dash-page { padding-inline: 10px; } .dash-header { grid-template-columns: 1fr auto; } .dash-header div { grid-row: 2; grid-column: 1/-1; } .dash-key-hint { font-size: 12px; } .dash-stage { border-width: 2px; border-radius: 10px; } .dash-controls { line-height: 2; } }

@@ -15,6 +15,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({
 const AccountPage = lazy(() => import('./pages/AccountPage').then(module => ({ default: module.AccountPage })));
 const AuthModal = lazy(() => import('./components/AuthModal').then(module => ({ default: module.AuthModal })));
 const ScreamerPage = lazy(() => import('./pages/ScreamerPage').then(module => ({ default: module.ScreamerPage })));
+const GamePage = lazy(() => import('./pages/GamePage').then(module => ({ default: module.GamePage })));
 
 function PageLoader() {
   return <div className="grid min-h-screen place-items-center bg-mist"><span className="size-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand" aria-label="Загрузка страницы"/></div>;
@@ -27,11 +28,11 @@ function AuthExperience() {
 
 function PublicOverlays() {
   const { pathname } = useLocation();
-  if (pathname.startsWith('/admin') || pathname === '/screamer') return null;
+  if (pathname.startsWith('/admin') || pathname === '/screamer' || pathname === '/game') return null;
   const travelPage = pathname === '/' || pathname === '/tours' || pathname.startsWith('/tour/');
   return <>{travelPage && <DepartureCityDialogs/>}{pathname !== '/chat' && <FloatingSupportWidget/>}</>;
 }
 
 export default function App() {
-  return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/search" element={<Navigate to="/" replace state={{ scrollTo: 'search' }}/>}/><Route path="/ai" element={<Navigate to="/" replace state={{ scrollTo: 'ai' }}/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><PublicOverlays/><AuthExperience/></>;
+  return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/search" element={<Navigate to="/" replace state={{ scrollTo: 'search' }}/>}/><Route path="/ai" element={<Navigate to="/" replace state={{ scrollTo: 'ai' }}/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="/game" element={<GamePage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><PublicOverlays/><AuthExperience/></>;
 }
