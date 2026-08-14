@@ -18,6 +18,9 @@ const HEIGHT = 420;
 const GROUND = 330;
 const PLAYER_X = 145;
 const PLAYER_SIZE = 38;
+const JUMP_SPEED = -720;
+const JUMP_BUFFER = .14;
+const QUARTER_TURN = Math.PI / 2;
 
 function readBestScore() {
   try {
@@ -51,6 +54,7 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
   let playerY = GROUND - PLAYER_SIZE;
   let velocity = 0;
   let rotation = 0;
+  let bufferedJump = 0;
   let spawnDistance = 440;
   let obstacles: Obstacle[] = [];
 
@@ -63,14 +67,15 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
 
   function reset() {
     status = 'ready'; score = 0; velocity = 0; rotation = 0;
-    playerY = GROUND - PLAYER_SIZE; spawnDistance = 440; obstacles = [];
+    playerY = GROUND - PLAYER_SIZE; bufferedJump = 0; spawnDistance = 440; obstacles = [];
     emitState();
   }
 
   function jump() {
     if (status === 'lost') reset();
     if (status === 'ready') status = 'playing';
-    if (playerY >= GROUND - PLAYER_SIZE - 1) velocity = -720;
+    if (playerY >= GROUND - PLAYER_SIZE - 1) velocity = JUMP_SPEED;
+    else bufferedJump = JUMP_BUFFER;
     emitState();
   }
 
@@ -83,10 +88,18 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
   function update(delta: number) {
     if (status !== 'playing') return;
     const speed = 340 + Math.min(score * .55, 150);
+    const wasAirborne = playerY < GROUND - PLAYER_SIZE;
+    bufferedJump = Math.max(0, bufferedJump - delta);
     velocity += 1900 * delta;
     playerY = Math.min(GROUND - PLAYER_SIZE, playerY + velocity * delta);
-    if (playerY >= GROUND - PLAYER_SIZE) velocity = 0;
-    else rotation += delta * 5.5;
+    if (playerY >= GROUND - PLAYER_SIZE) {
+      velocity = 0;
+      rotation = Math.round(rotation / QUARTER_TURN) * QUARTER_TURN;
+      if (wasAirborne && bufferedJump > 0) {
+        velocity = JUMP_SPEED;
+        bufferedJump = 0;
+      }
+    } else rotation = (rotation + delta * 5.5) % (Math.PI * 2);
     spawnDistance -= speed * delta;
     if (spawnDistance <= 0) addObstacle();
     obstacles.forEach(obstacle => { obstacle.x -= speed * delta; });
