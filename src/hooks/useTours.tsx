@@ -1,18 +1,20 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { tours as defaultTours, type Tour } from '../data/tours';
+import { withUniqueTourCovers } from '../utils/tourImages';
 import { useAutoRefresh } from './useAutoRefresh';
 
 type ToursContextValue = { tours: Tour[]; allTours: Tour[]; adminTours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; setTourHidden: (id: string, hidden: boolean) => Promise<void>; loadAdminTours: () => Promise<void>; resetTours: () => Promise<void> };
 const ToursContext = createContext<ToursContextValue | null>(null);
 const refreshInterval = () => 5 * 60 * 1000;
 const CACHE_KEY = 'nexttour:partner-catalog:v1';
+const PAGE_SIZE = 100;
 
 function cachedTours() {
   try {
     const value = localStorage.getItem(CACHE_KEY);
     const parsed = value ? JSON.parse(value) as unknown : null;
-    return Array.isArray(parsed) && parsed.length ? parsed as Tour[] : defaultTours;
-  } catch { return defaultTours; }
+    return withUniqueTourCovers(Array.isArray(parsed) && parsed.length ? parsed as Tour[] : defaultTours);
+  } catch { return withUniqueTourCovers(defaultTours); }
 }
 
 function cacheTours(tours: Tour[]) {
@@ -29,7 +31,20 @@ export function ToursProvider({ children }: { children: ReactNode }) {
   const [tours, setTours] = useState<Tour[]>(cachedTours);
   const [adminTours, setAdminTours] = useState<Tour[]>([]);
   const load = useCallback(async () => {
-    try { const data = await invokeToursData({ action: 'list_tours' }); const cloudTours = data.tours as Tour[]; if (cloudTours.length) { setTours(cloudTours); cacheTours(cloudTours); } }
+    try {
+      const cloudTours: Tour[] = [];
+      for (let offset = 0; ; offset += PAGE_SIZE) {
+        const data = await invokeToursData({ action: 'list_tours', offset, limit: PAGE_SIZE });
+        const page = data.tours as Tour[];
+        cloudTours.push(...page);
+        if (cloudTours.length) {
+          const visibleTours = withUniqueTourCovers(cloudTours);
+          setTours(visibleTours);
+          cacheTours(visibleTours);
+        }
+        if (data.hasMore !== true) break;
+      }
+    }
     catch { /* Встроенный каталог остаётся доступен при временном отсутствии сети. */ }
   }, []);
   const loadAdminTours = useCallback(async () => {

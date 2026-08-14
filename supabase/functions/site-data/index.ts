@@ -48,14 +48,23 @@ Deno.serve(async request => {
     if (action.startsWith('admin_') && !admin) return json({ error: 'Требуется вход администратора' }, 401);
 
     if (action === 'list_tours') {
-      const rows: Array<{ data: unknown }> = [];
-      for (let from = 0; ; from += 1000) {
-        const { data, error } = await db.from('app_tours').select('data').eq('sync_status', 'active').eq('hidden', false).order('updated_at', { ascending: false }).range(from, from + 999);
-        if (error) throw error;
-        rows.push(...(data ?? []));
-        if (!data || data.length < 1000) break;
+      if (body.offset === undefined && body.limit === undefined) {
+        const rows: Array<{ data: unknown }> = [];
+        for (let from = 0; ; from += 1000) {
+          const { data, error } = await db.from('app_tours').select('data').eq('sync_status', 'active').eq('hidden', false).order('updated_at', { ascending: false }).range(from, from + 999);
+          if (error) throw error;
+          rows.push(...(data ?? []));
+          if (!data || data.length < 1000) break;
+        }
+        return json({ tours: rows.map(row => row.data) });
       }
-      return json({ tours: rows.map(row => row.data) });
+      const offset = Math.max(0, Math.floor(Number(body.offset) || 0));
+      const limit = Math.min(1000, Math.max(1, Math.floor(Number(body.limit) || 500)));
+      const { data, error } = await db.from('app_tours').select('data').eq('sync_status', 'active').eq('hidden', false)
+        .order('updated_at', { ascending: false }).range(offset, offset + limit);
+      if (error) throw error;
+      const rows = data ?? [];
+      return json({ tours: rows.slice(0, limit).map(row => row.data), hasMore: rows.length > limit });
     }
     if (action === 'list_reviews') {
       const { data, error } = await db.from('app_reviews').select('*').eq('status', 'published').order('created_at', { ascending: false });

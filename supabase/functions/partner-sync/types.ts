@@ -29,6 +29,8 @@ export const fallbackImages: Record<string, string> = {
 
 export const fallbackImage = 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=78';
 
+export const uniqueFallbackImage = (id: string) => `https://picsum.photos/seed/nexttour-${encodeURIComponent(id)}/1200/800`;
+
 export async function stableId(value: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].slice(0, 12).map(byte => byte.toString(16).padStart(2, '0')).join('');
