@@ -24,7 +24,8 @@ export function ScreamerShortcut() {
       if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
 
       pressedKeys.add(event.code);
-      const isGameShortcut = pressedKeys.has('KeyA') && pressedKeys.has('Quote');
+      const hasModifier = event.ctrlKey || event.altKey || event.shiftKey || event.metaKey;
+      const isGameShortcut = !hasModifier && pressedKeys.has('KeyA') && pressedKeys.has('Quote');
       if (isGameShortcut && !gameOpened) {
         event.preventDefault();
         gameOpened = true;

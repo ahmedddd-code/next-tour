@@ -19,6 +19,23 @@ const GROUND = 330;
 const PLAYER_X = 145;
 const PLAYER_SIZE = 38;
 
+function readBestScore() {
+  try {
+    const storedScore = Number(localStorage.getItem('dash-best'));
+    return Number.isFinite(storedScore) && storedScore > 0 ? Math.floor(storedScore) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveBestScore(score: number) {
+  try {
+    localStorage.setItem('dash-best', String(score));
+  } catch {
+    // The game still works when browser storage is disabled.
+  }
+}
+
 export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: GameSnapshot) => void) {
   const canvasContext = canvas.getContext('2d');
   if (!canvasContext) throw new Error('Canvas is not supported');
@@ -27,24 +44,34 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
   let previousTime = 0;
   let status: GameStatus = 'ready';
   let score = 0;
-  let best = Number(localStorage.getItem('dash-best') ?? 0);
+  let best = readBestScore();
+  let emittedScore = -1;
+  let emittedBest = -1;
+  let emittedStatus: GameStatus | null = null;
   let playerY = GROUND - PLAYER_SIZE;
   let velocity = 0;
   let rotation = 0;
   let spawnDistance = 440;
   let obstacles: Obstacle[] = [];
 
+  function emitState() {
+    const roundedScore = Math.floor(score);
+    if (roundedScore === emittedScore && best === emittedBest && status === emittedStatus) return;
+    emittedScore = roundedScore; emittedBest = best; emittedStatus = status;
+    onChange({ score: roundedScore, best, status });
+  }
+
   function reset() {
     status = 'ready'; score = 0; velocity = 0; rotation = 0;
     playerY = GROUND - PLAYER_SIZE; spawnDistance = 440; obstacles = [];
-    onChange({ score, best, status });
+    emitState();
   }
 
   function jump() {
     if (status === 'lost') reset();
     if (status === 'ready') status = 'playing';
     if (playerY >= GROUND - PLAYER_SIZE - 1) velocity = -720;
-    onChange({ score, best, status });
+    emitState();
   }
 
   function addObstacle() {
@@ -73,9 +100,9 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
     if (hit) {
       status = 'lost';
       best = Math.max(best, Math.floor(score));
-      localStorage.setItem('dash-best', String(best));
+      saveBestScore(best);
     }
-    onChange({ score: Math.floor(score), best, status });
+    emitState();
   }
 
   function draw() {
