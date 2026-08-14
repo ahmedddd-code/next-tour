@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
 import { CatalogFilters, filterAndSortTours, type SortOption, type TourFilters } from '../components/CatalogFilters';
@@ -10,13 +10,18 @@ import { useDepartureCity } from '../hooks/useDepartureCity';
 import { cityInGenitive } from '../data/kazakhstanCities';
 
 export function ToursPage() {
-  const { tours } = useTours();
+  const { allTours: tours } = useTours();
   const { city, selectCity } = useDepartureCity();
   const [searchParams] = useSearchParams();
   const maxPrice = useMemo(() => Math.max(500000, Math.ceil(Math.max(0, ...tours.map(tour => tour.price)) / 50000) * 50000), [tours]);
   const countries = useMemo(() => [...new Set(tours.map(tour => tour.country))], [tours]);
   const [filters, setFilters] = useState<TourFilters>({ query: searchParams.get('query') ?? '', country: '', maxPrice, nights: '', sort: 'popularity' });
   const [visibleCount, setVisibleCount] = useState(30);
+  const previousMaxPrice = useRef(maxPrice);
+  useEffect(() => {
+    setFilters(current => current.maxPrice === previousMaxPrice.current ? { ...current, maxPrice } : current);
+    previousMaxPrice.current = maxPrice;
+  }, [maxPrice]);
   const cityTours = useMemo(() => tours.filter(tour => tour.departureCity === city), [tours, city]);
   const alternativeCities = useMemo(() => [...new Set(tours.map(tour => tour.departureCity))].filter(item => item !== city).slice(0, 3), [tours, city]);
   const catalogSource = useMemo(() => cityTours.length >= 2 ? cityTours : [...cityTours, ...tours.filter(tour => alternativeCities.includes(tour.departureCity))], [cityTours, tours, alternativeCities]);

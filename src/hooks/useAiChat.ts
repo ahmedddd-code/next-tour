@@ -7,7 +7,7 @@ export type ChatMessage = { id: string; role: 'user' | 'assistant'; text: string
 const welcome: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: 'Привет! Какой отдых вам хочется? Я уточню бюджет, даты и количество туристов, а затем предложу подходящие туры.',
+  text: 'Привет! Расскажите, каким вы представляете свой отдых — море, новые места, тишина или побольше впечатлений? Подберём вариант вместе 🙂',
 };
 
 export function useAiChat() {
@@ -36,12 +36,18 @@ export function useAiChat() {
       departure: tour.departureCity, dates: tour.dates, nights: tour.nights,
       meal: tour.meal, price: tour.price, rating: tour.rating, hot: tour.isHot,
     }));
-    const system = `Ты — дружелюбный турагент казахстанской компании NEXT TOUR. Отвечай по-русски, кратко и конкретно. Все цены указаны в казахстанских тенге (₸) за двоих. Перед подбором выясни три параметра: бюджет, даты и количество человек. Если чего-то не хватает — задай один понятный уточняющий вопрос. Предлагай только туры из каталога ниже, максимум три варианта. Не выдумывай цены и отели. Для выбранного варианта укажи точное название и ссылку /tour/ID. Каталог: ${JSON.stringify(catalog)}`;
+    const system = `Ты — NEXT AI, внимательный travel-консультант казахстанской компании NEXT TOUR. Общайся по-русски тепло, естественно и по-человечески, как хороший менеджер в личной переписке. Обращайся на «вы». Сначала откликайся на пожелание клиента, затем помогай по делу. Не повторяй приветствие, не используй канцелярит, шаблонные фразы и длинные списки. Задавай только один вопрос за сообщение. Если данных уже достаточно, не устраивай анкету и сразу предложи варианты. Для точного подбора важны бюджет, даты, город вылета и количество туристов, но уточняй только действительно недостающее. Можно использовать не больше одного уместного эмодзи в ответе.
+
+Все цены в каталоге указаны в казахстанских тенге (₸) за двоих. Предлагай только реальные туры из каталога ниже — максимум три за один ответ. Не выдумывай отели, цены и детали. Для каждого предложенного тура обязательно добавляй кликабельную ссылку строго в формате [Открыть тур](/tour/ID), подставляя его настоящий id из каталога. Каталог: ${JSON.stringify(catalog)}`;
     const prompt = history.map(message => `${message.role === 'user' ? 'Клиент' : 'Ассистент'}: ${message.text}`).join('\n');
 
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('ai', { body: { prompt, system } });
-      if (invokeError) throw invokeError;
+      if (invokeError) {
+        const response = invokeError.context instanceof Response ? invokeError.context : null;
+        const details = response ? await response.clone().json().catch(() => null) as { error?: string } | null : null;
+        throw new Error(details?.error || invokeError.message);
+      }
       if (!data?.text) throw new Error(data?.error || 'AI вернул пустой ответ');
       setMessages(current => [...current, { id: crypto.randomUUID(), role: 'assistant', text: data.text as string }]);
     } catch (requestError) {

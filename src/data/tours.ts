@@ -29,6 +29,12 @@ export type Tour = {
   sourcePrice?: number;
   sourceCurrency?: string;
   sourceHotelId?: string;
+  status?: 'active' | 'outdated';
+  dedupeKey?: string;
+  bestPrice?: boolean;
+  fuelSurcharge?: number;
+  partnerOffers?: Array<{ source: string; price: number; currency: string; sourcePrice: number; externalOfferId: string; sourceUrl: string; availability: string; updatedAt: string; fuelSurcharge?: number }>;
+  isHidden?: boolean;
 };
 
 const photos = {

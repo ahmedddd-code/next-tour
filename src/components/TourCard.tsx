@@ -14,6 +14,7 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
         <div className="absolute inset-0 bg-gradient-to-t from-navy/55 via-transparent to-transparent" />
         {tour.isHot && <span className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-brand px-3 py-2 text-xs font-black text-white shadow-lg"><Flame className="size-3.5 fill-white" /> Горящий тур</span>}
         <span className="absolute right-4 top-4 rounded-full bg-navy/90 px-3 py-2 text-xs font-black text-white shadow-lg backdrop-blur">Next Tour</span>
+        {tour.bestPrice && <span className="absolute bottom-4 right-4 rounded-full bg-brand px-3 py-1.5 text-xs font-black text-white shadow-lg">Лучшая цена</span>}
         <span className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-extrabold text-navy"><Star className="size-3.5 fill-amber-400 text-amber-400" />{tour.partnerSource ? `${Math.round(tour.rating)}★` : tour.rating}{!tour.partnerSource && tour.reviews > 0 && <span className="font-medium text-slate-400">({tour.reviews})</span>}</span>
       </Link>
       <div className="flex flex-1 flex-col p-5">
@@ -24,7 +25,7 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
           <span className="flex items-center gap-1.5"><CalendarDays className="size-4 text-slate-400" />{tour.dates}</span>
         </div>
         <div className="mt-5 flex items-end justify-between border-t border-slate-100 pt-4">
-          <div>{tour.oldPrice && <p className="text-xs text-slate-400 line-through">{formatPrice(tour.oldPrice)}</p>}<p className="text-2xl font-black text-navy">{formatPrice(tour.price)}</p><p className="text-[11px] text-slate-400">за двоих · {tour.nights} ночей</p></div>
+          <div>{tour.oldPrice && <p className="text-xs text-slate-400 line-through">{formatPrice(tour.oldPrice)}</p>}<p className="text-2xl font-black text-navy">{formatPrice(tour.price)}</p><p className="text-[11px] text-slate-400">за двоих · {tour.nights} ночей{tour.partnerOffers && tour.partnerOffers.length > 1 ? ` · ${tour.partnerOffers.length} оператора` : ''}</p></div>
         </div>
         <div className="mt-5 grid gap-2">
           <Link to={`/tour/${tour.id}`} className="flex items-center justify-center rounded-2xl border border-brand/25 px-5 py-3 text-sm font-extrabold text-brand-dark transition hover:bg-brand/5">Подробнее</Link>

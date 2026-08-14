@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 import { syncSamoSources } from './samo.ts';
 import { syncPegas } from './pegas.ts';
 import type { PartnerTour, SyncResult } from './types.ts';
+import { mergeDuplicateTours } from './dedupe.ts';
 
 const url = Deno.env.get('SUPABASE_URL');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -12,16 +13,22 @@ Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (request.method !== 'POST') return json({ error: 'Используйте POST' }, 405);
   if (!url || !key) return json({ error: 'Синхронизация не настроена' }, 503);
-  const payload = await request.json().catch(() => ({})) as { manual?: boolean };
+  const payload = await request.json().catch(() => ({})) as { manual?: boolean; fullReindex?: boolean };
   const manual = payload.manual === true && request.headers.get('authorization') === `Bearer ${key}`;
   const db = createClient(url, key, { auth: { persistSession: false } });
   const { data: running } = await db.from('partner_sync_state').select('last_started_at').eq('source', 'all').maybeSingle();
-  if (!manual && running?.last_started_at && Date.now() - new Date(running.last_started_at).getTime() < 45 * 60 * 1000) return json({ ok: true, skipped: true });
+  if (!manual && !payload.fullReindex && running?.last_started_at && Date.now() - new Date(running.last_started_at).getTime() < 45 * 60 * 1000) return json({ ok: true, skipped: true });
 
   const startedAt = new Date().toISOString();
   await db.from('partner_sync_state').upsert({ source: 'all', last_started_at: startedAt, status: 'running', error: null });
+  let runId: string | null = null;
   try {
     const results = [...await syncSamoSources(), await syncPegas()] as SyncResult[];
+    const incomplete = results.filter(result => result.error || result.tours.length === 0);
+    if (incomplete.length) throw new Error(`Full reindex cancelled; incomplete feeds: ${incomplete.map(result => result.source).join(', ')}`);
+    const { data: createdRunId, error: beginError } = await db.rpc('begin_partner_reindex');
+    if (beginError) throw beginError;
+    runId = createdRunId as string;
     const { data: controls } = await db.from('partner_offer_controls').select('*');
     const storedPhotoRows: Array<{ id: string; data: unknown }> = [];
     for (let from = 0; ; from += 1000) {
@@ -37,18 +44,47 @@ Deno.serve(async request => {
       const withStoredPhotos = storedPhotos.has(tour.id) ? { ...tour, images: storedPhotos.get(tour.id)! } : tour;
       return override ? { ...withStoredPhotos, ...override, id: tour.id, externalOfferId: tour.externalOfferId, syncedAt: tour.syncedAt, priceCheckedAt: tour.priceCheckedAt } : withStoredPhotos;
     });
-    const tours = [...new Map(collectedTours.map(tour => [tour.id, tour])).values()];
+    const uniqueRawTours = [...new Map(collectedTours.map(tour => [tour.externalOfferId, tour])).values()];
+    const tours = await mergeDuplicateTours(uniqueRawTours);
+    const existingRows: Array<{ id: string; normalized_key: string | null; data: unknown }> = [];
+    for (let from = 0; ; from += 1000) {
+      const { data: page, error: pageError } = await db.from('app_tours').select('id,normalized_key,data').like('id', 'partner-%').range(from, from + 999);
+      if (pageError) throw pageError;
+      existingRows.push(...(page ?? []));
+      if (!page || page.length < 1000) break;
+    }
+    const previousByKey = new Map(existingRows.filter(row => row.normalized_key).map(row => [row.normalized_key!, row]));
+    const priceChanges: Array<Record<string, unknown>> = [];
     for (let index = 0; index < tours.length; index += 200) {
-      const rows = tours.slice(index, index + 200).map(tour => ({ id: tour.id, data: tour, updated_at: tour.syncedAt }));
+      const rows = tours.slice(index, index + 200).map(tour => {
+        const previous = previousByKey.get(tour.dedupeKey ?? '')?.data as PartnerTour | undefined;
+        const oldOffers = new Map((previous?.partnerOffers ?? []).map(offer => [offer.source, offer]));
+        for (const offer of tour.partnerOffers ?? []) {
+          const old = oldOffers.get(offer.source);
+          if (old && old.price !== offer.price) priceChanges.push({ tour_id: tour.id, normalized_key: tour.dedupeKey,
+            partner_source: offer.source, external_offer_id: offer.externalOfferId, old_price: old.price,
+            new_price: offer.price, currency: offer.currency, changed_at: tour.priceCheckedAt });
+        }
+        const savedImages = previous?.images?.some(image => !image.includes('images.unsplash.com')) ? previous.images : tour.images;
+        const currentTour = { ...tour, images: [...new Set(savedImages)].slice(0, 10) };
+        return { id: tour.id, data: currentTour, updated_at: tour.syncedAt, last_seen_at: tour.syncedAt,
+          sync_status: 'active', normalized_key: tour.dedupeKey };
+      });
       const { error } = await db.from('app_tours').upsert(rows); if (error) throw error;
     }
-    const staleBefore = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
-    const { error: staleError } = await db.from('app_tours').delete().lt('updated_at', staleBefore).like('id', 'partner-%');
-    if (staleError) throw staleError;
+    for (let index = 0; index < priceChanges.length; index += 500) {
+      const { error } = await db.from('partner_price_history').insert(priceChanges.slice(index, index + 500));
+      if (error) throw error;
+    }
     for (const result of results) await db.from('partner_sync_state').upsert({ source: result.source, last_started_at: startedAt, last_completed_at: new Date().toISOString(), status: result.error ? 'error' : 'ok', offers_count: result.tours.length, error: result.error ?? null });
     const errors = results.filter(result => result.error).map(result => `${result.source}: ${result.error}`);
-    await db.from('partner_sync_state').upsert({ source: 'all', last_started_at: startedAt, last_completed_at: new Date().toISOString(), status: errors.length ? 'partial' : 'ok', offers_count: tours.length, error: errors.join('; ') || null });
-    return json({ ok: true, offers: tours.length, sources: results.map(result => ({ source: result.source, offers: result.tours.length, error: result.error })) });
+    const status = errors.length ? 'partial' : 'ok';
+    const { data: removed, error: finishError } = await db.rpc('finish_partner_reindex', { run_id: runId,
+      received: uniqueRawTours.length, unique_offers: tours.length, run_status: status, run_error: errors.join('; ') || null });
+    if (finishError) throw finishError;
+    await db.from('partner_sync_state').upsert({ source: 'all', last_started_at: startedAt, last_completed_at: new Date().toISOString(), status, offers_count: tours.length, error: errors.join('; ') || null });
+    return json({ ok: true, received: uniqueRawTours.length, offers: tours.length, duplicatesMerged: uniqueRawTours.length - tours.length,
+      priceChanges: priceChanges.length, removed, sources: results.map(result => ({ source: result.source, offers: result.tours.length, error: result.error })) });
   } catch (error) {
     const message = error instanceof Error
       ? `${error.name}: ${error.message}`
@@ -56,6 +92,7 @@ Deno.serve(async request => {
         ? error
         : JSON.stringify(error);
     await db.from('partner_sync_state').upsert({ source: 'all', last_started_at: startedAt, last_completed_at: new Date().toISOString(), status: 'error', error: message });
+    if (runId) await db.rpc('cancel_partner_reindex', { run_id: runId, run_error: message });
     return json({ error: 'Не удалось обновить предложения' }, 500);
   }
 });

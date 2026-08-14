@@ -15,7 +15,7 @@ const cleanName = (value: string) => value.toLowerCase().replace(/&amp;/g, '&').
   .replace(/\d\s*\*|[^\p{L}\p{N}]+/gu, ' ').trim();
 const absoluteImages = (text: string, base: string) => [...new Set([...text.matchAll(/(?:src|href|url\()["']?([^"')]+\.(?:jpe?g|webp|png)(?:\?[^"') ]*)?)/gi)].map(match => {
   try { return new URL(match[1].replaceAll('\\/', '/'), base).href; } catch { return ''; }
-}).filter(image => image && !/logo|icon|flag|banner|hotelparam/i.test(image)))].slice(0, 8);
+}).filter(image => image && !/logo|icon|flag|banner|hotelparam/i.test(image)))].slice(0, 10);
 
 const samoSources: Record<string, { base: string; route: string }> = {
   selfie: { base: 'https://b2b.selfietravel.kz', route: '/hotels?' },
@@ -85,7 +85,7 @@ async function kompasGallery(link: string, cover: string[]) {
   try {
     const html = await fetch(link, { headers }).then(response => response.text());
     const gallery = absoluteImages(html, link).filter(image => image.includes('/useruploads/hotels/'));
-    return [...new Set([...cover, ...gallery])].slice(0, 8);
+  return [...new Set([...cover, ...gallery])].slice(0, 10);
   } catch { return cover; }
 }
 

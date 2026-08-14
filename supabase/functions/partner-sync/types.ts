@@ -5,6 +5,14 @@ export type PartnerTour = {
   partnerSource: string; externalOfferId: string; sourceUrl: string; syncedAt: string; priceCheckedAt: string;
   room?: string; tourProgram?: string; availability?: string; sourcePrice?: number; sourceCurrency?: string;
   sourceHotelId?: string;
+  fuelSurcharge?: number; status?: 'active' | 'outdated'; dedupeKey?: string; bestPrice?: boolean;
+  partnerOffers?: PartnerOffer[];
+};
+
+export type PartnerOffer = {
+  source: string; price: number; currency: string; sourcePrice: number;
+  externalOfferId: string; sourceUrl: string; availability: string; updatedAt: string;
+  fuelSurcharge?: number;
 };
 
 export type SyncResult = { source: string; tours: PartnerTour[]; error?: string };

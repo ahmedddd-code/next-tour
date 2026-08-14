@@ -19,9 +19,12 @@ export function resizeImage(file: File, maxWidth = 1400): Promise<string> {
   });
 }
 
-export function optimizedImageUrl(source: string, width: number, quality = 74) {
-  if (!source.includes('images.unsplash.com')) return source;
-  const url = new URL(source);
+const fallbackTourImage = '/images/nexttour-hero.jpg';
+
+export function optimizedImageUrl(source: string | undefined, width: number, quality = 74) {
+  const safeSource = source || fallbackTourImage;
+  if (!safeSource.includes('images.unsplash.com')) return safeSource;
+  const url = new URL(safeSource);
   url.searchParams.set('auto', 'format');
   url.searchParams.set('fit', 'crop');
   url.searchParams.set('w', String(width));
@@ -29,7 +32,7 @@ export function optimizedImageUrl(source: string, width: number, quality = 74) {
   return url.toString();
 }
 
-export function optimizedImageSrcSet(source: string, widths: number[]) {
-  if (!source.includes('images.unsplash.com')) return undefined;
+export function optimizedImageSrcSet(source: string | undefined, widths: number[]) {
+  if (!source?.includes('images.unsplash.com')) return undefined;
   return widths.map(width => `${optimizedImageUrl(source, width)} ${width}w`).join(', ');
 }

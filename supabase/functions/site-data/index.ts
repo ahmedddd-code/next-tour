@@ -50,7 +50,7 @@ Deno.serve(async request => {
     if (action === 'list_tours') {
       const rows: Array<{ data: unknown }> = [];
       for (let from = 0; ; from += 1000) {
-        const { data, error } = await db.from('app_tours').select('data').order('updated_at', { ascending: false }).range(from, from + 999);
+        const { data, error } = await db.from('app_tours').select('data').eq('sync_status', 'active').eq('hidden', false).order('updated_at', { ascending: false }).range(from, from + 999);
         if (error) throw error;
         rows.push(...(data ?? []));
         if (!data || data.length < 1000) break;
@@ -96,6 +96,16 @@ Deno.serve(async request => {
       const { data, error } = await db.from('app_reviews').select('*').order('created_at', { ascending: false }); if (error) throw error;
       return json({ reviews: (data ?? []).map(row => ({ id: row.id, name: row.name, rating: row.rating, text: row.text, status: row.status, createdAt: row.created_at })) });
     }
+    if (action === 'admin_list_tours') {
+      const rows: Array<{ data: Record<string, unknown>; hidden: boolean }> = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await db.from('app_tours').select('data,hidden').eq('sync_status', 'active').order('updated_at', { ascending: false }).range(from, from + 999);
+        if (error) throw error;
+        rows.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      return json({ tours: rows.map(row => ({ ...row.data, isHidden: row.hidden })) });
+    }
     if (action === 'admin_upsert_tour') {
       const tour = body.tour as Record<string, unknown>; if (!tour || typeof tour.id !== 'string') return json({ error: 'Некорректный тур' }, 400);
       if (typeof tour.externalOfferId === 'string') await db.from('partner_offer_controls').upsert({ external_id: tour.externalOfferId, hidden: false, override_data: tour, updated_at: new Date().toISOString() });
@@ -108,6 +118,7 @@ Deno.serve(async request => {
       return json({ ok: true });
     }
     const id = String(body.id ?? '');
+    if (action === 'admin_set_tour_hidden') { const { error } = await db.from('app_tours').update({ hidden: body.hidden === true, updated_at: new Date().toISOString() }).eq('id', id); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_delete_tour') { const { data: existing } = await db.from('app_tours').select('data').eq('id', id).maybeSingle(); const externalId = (existing?.data as Record<string, unknown> | undefined)?.externalOfferId; if (typeof externalId === 'string') await db.from('partner_offer_controls').upsert({ external_id: externalId, hidden: true, updated_at: new Date().toISOString() }); const { error } = await db.from('app_tours').delete().eq('id', id); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_partner_sync_status') { const { data, error } = await db.from('partner_sync_state').select('*').order('source'); if (error) throw error; return json({ sources: data ?? [] }); }
     if (action === 'admin_partner_sync') { const response = await fetch(`${url}/functions/v1/partner-sync`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ manual: true }) }); const result = await response.json(); return json(result, response.ok ? 200 : 502); }
