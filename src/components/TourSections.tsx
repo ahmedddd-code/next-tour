@@ -29,7 +29,7 @@ export function TourSections() {
   const featuredTours = (cityPartnerTours.length ? cityPartnerTours : partnerTours.length ? partnerTours : cityTours).slice(0, 3);
   const showingAnotherCity = cityPartnerTours.length === 0 && partnerTours.length > 0;
   return <>
-    <section id="hot" className="section-shell scroll-mt-24 py-24">
+    <section id="hot" className="section-shell section-space scroll-mt-24">
       <Heading eyebrow={showingAnotherCity ? 'Предложения туроператоров' : `Вылет из ${cityInGenitive(city)}`} title="Горящие туры 🔥" text={showingAnotherCity ? 'Сразу показываем актуальные партнёрские туры. Город вылета указан в каждой карточке.' : 'Актуальные предложения партнёров из выбранного города — цены обновляются каждый день.'}/>
       {showingAnotherCity && <div className="mb-7 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900"><strong>Из {cityInGenitive(city)} партнёрских туров пока нет.</strong><span className="ml-1">Показываем доступные варианты из других городов:</span><div className="mt-3 flex flex-wrap gap-2">{alternatives.map(item => <button key={item} onClick={() => selectCity(item)} className="rounded-full bg-white px-3 py-2 text-xs font-black text-blue-700 shadow-sm hover:bg-blue-100">{item}</button>)}</div></div>}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">{featuredTours.map(tour => <TourCard key={tour.id} tour={tour}/>)}</div>
