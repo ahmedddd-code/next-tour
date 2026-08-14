@@ -16,6 +16,7 @@ export type Tour = {
   popularity: number;
   isHot: boolean;
   images: string[];
+  coverImage?: string;
   description: string;
   included: string[];
   partnerSource?: string;
