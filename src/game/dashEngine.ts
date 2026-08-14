@@ -1,4 +1,4 @@
-export type GameStatus = 'ready' | 'playing' | 'lost';
+export type GameStatus = 'ready' | 'playing' | 'paused' | 'lost';
 
 export interface GameSnapshot {
   score: number;
@@ -19,6 +19,7 @@ const GROUND = 330;
 const PLAYER_X = 145;
 const PLAYER_SIZE = 38;
 const JUMP_SPEED = -720;
+const GRAVITY = 2500;
 const JUMP_BUFFER = .14;
 const QUARTER_TURN = Math.PI / 2;
 
@@ -72,10 +73,18 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
   }
 
   function jump() {
+    if (status === 'paused') return;
     if (status === 'lost') reset();
     if (status === 'ready') status = 'playing';
     if (playerY >= GROUND - PLAYER_SIZE - 1) velocity = JUMP_SPEED;
     else bufferedJump = JUMP_BUFFER;
+    emitState();
+  }
+
+  function togglePause() {
+    if (status === 'playing') status = 'paused';
+    else if (status === 'paused') status = 'playing';
+    else return;
     emitState();
   }
 
@@ -90,7 +99,7 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
     const speed = 340 + Math.min(score * .55, 150);
     const wasAirborne = playerY < GROUND - PLAYER_SIZE;
     bufferedJump = Math.max(0, bufferedJump - delta);
-    velocity += 1900 * delta;
+    velocity += GRAVITY * delta;
     playerY = Math.min(GROUND - PLAYER_SIZE, playerY + velocity * delta);
     if (playerY >= GROUND - PLAYER_SIZE) {
       velocity = 0;
@@ -149,5 +158,5 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
     update(delta); draw(); frame = requestAnimationFrame(loop);
   }
   canvas.width = WIDTH; canvas.height = HEIGHT; reset(); frame = requestAnimationFrame(loop);
-  return { jump, reset, destroy: () => cancelAnimationFrame(frame) };
+  return { jump, reset, togglePause, destroy: () => cancelAnimationFrame(frame) };
 }
