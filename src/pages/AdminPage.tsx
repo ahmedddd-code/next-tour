@@ -1,15 +1,16 @@
-import { ClipboardList, Edit3, ExternalLink, Eye, EyeOff, Flame, Home, LogOut, Map, Menu, MessageCircle, MessageSquareText, Plus, RotateCcw, Settings, Trash2, X } from 'lucide-react';
+import { ClipboardList, ExternalLink, Home, LogOut, Map, Menu, MessageCircle, MessageSquareText, Plus, RotateCcw, Settings, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { AdminTourForm } from '../components/AdminTourForm';
+import { AdminTourList } from '../components/AdminTourList';
 import { AdminBookings } from '../components/AdminBookings';
 import { AdminReviews } from '../components/AdminReviews';
 import { AdminSupportChats } from '../components/AdminSupportChats';
 import { AdminLogin } from '../components/AdminLogin';
 import { AdminNotifications, type AdminAlertTab } from '../components/AdminNotifications';
 import { Logo } from '../components/Logo';
-import { formatPrice, type Tour } from '../data/tours';
+import type { Tour } from '../data/tours';
 import { useTours } from '../hooks/useTours';
 import { BookingsProvider } from '../hooks/useBookings';
 import { ReviewsProvider } from '../hooks/useReviews';
@@ -18,7 +19,6 @@ import { useBookings } from '../hooks/useBookings';
 import { useReviews } from '../hooks/useReviews';
 import { useSupportChat } from '../hooks/useSupportChat';
 import { getAdminToken, logoutAdmin, validateAdminSession } from '../lib/adminSession';
-import { optimizedImageUrl } from '../utils/image';
 
 export function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -57,7 +57,7 @@ function AdminContent({ onSignOut }: { onSignOut: () => void }) {
     <nav className="hidden border-b border-slate-200 bg-white md:block"><div className="section-shell flex flex-wrap gap-2 py-3"><button onClick={() => selectTab('tours')} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${activeTab === 'tours' ? 'bg-brand text-white' : 'text-slate-500 hover:bg-mist'}`}><Map className="size-4"/>Туры Next Tour</button><button onClick={() => selectTab('bookings')} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${activeTab === 'bookings' ? 'bg-brand text-white' : 'text-slate-500 hover:bg-mist'}`}><ClipboardList className="size-4"/>Заявки{badge(counts.bookings)}</button><button onClick={() => selectTab('chats')} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${activeTab === 'chats' ? 'bg-brand text-white' : 'text-slate-500 hover:bg-mist'}`}><MessageCircle className="size-4"/>Чаты{badge(counts.chats)}</button><button onClick={() => selectTab('reviews')} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${activeTab === 'reviews' ? 'bg-brand text-white' : 'text-slate-500 hover:bg-mist'}`}><MessageSquareText className="size-4"/>Отзывы{badge(counts.reviews)}</button></div></nav>
     {activeTab === 'tours' ? <div className={`section-shell grid gap-7 py-10 ${formOpen ? 'lg:grid-cols-[minmax(0,1fr)_460px]' : ''}`}>
       <section><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-brand-dark">Админ-панель</p><h1 className="mt-2 text-3xl font-black tracking-[-.04em] sm:text-4xl">Управление турами</h1><p className="mt-2 text-sm text-slate-500">Показано: {tours.filter(tour => !tour.isHidden).length} · скрыто: {tours.filter(tour => tour.isHidden).length}</p></div><button onClick={() => { if (window.confirm('Вернуть исходный каталог? Все изменения будут потеряны.')) resetTours(); }} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-navy"><RotateCcw className="size-4"/>Восстановить исходные</button></div>
-        <div className="space-y-3">{tours.map(tour => <article key={tour.id} className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 shadow-sm sm:flex-row sm:items-center ${tour.isHidden ? 'border-slate-200 opacity-65' : 'border-slate-100'}`}><img src={optimizedImageUrl(tour.images[0], 240)} alt={tour.hotel} className="h-28 w-full rounded-xl object-cover sm:h-20 sm:w-28"/><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h2 className="truncate font-black text-navy">{tour.hotel}</h2>{tour.isHot && <Flame className="size-4 shrink-0 fill-brand text-brand"/>}{tour.isHidden && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase text-slate-500">Скрыт</span>}</div><p className="mt-1 text-sm text-slate-500">{tour.country}, {tour.resort} · {tour.nights} ночей</p><p className="mt-1 font-black text-brand-dark">{formatPrice(tour.price)}</p></div><div className="flex gap-2"><button onClick={() => edit(tour)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-mist px-4 py-3 text-sm font-extrabold text-brand-dark hover:bg-brand/15"><Edit3 className="size-4"/>Изменить</button><button onClick={() => toggleHidden(tour)} className={`grid size-11 shrink-0 place-items-center rounded-xl ${tour.isHidden ? 'bg-brand/10 text-brand-dark hover:bg-brand/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`} aria-label={`${tour.isHidden ? 'Показать' : 'Скрыть'} ${tour.hotel}`}>{tour.isHidden ? <Eye className="size-4"/> : <EyeOff className="size-4"/>}</button><button onClick={() => remove(tour)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100" aria-label={`Удалить ${tour.hotel}`}><Trash2 className="size-4"/></button></div></article>)}</div>
+        <AdminTourList tours={tours} onEdit={edit} onToggleHidden={toggleHidden} onRemove={remove}/>
         {tours.length === 0 && <div className="rounded-3xl bg-white py-20 text-center"><p className="font-black">Каталог пуст</p><button onClick={() => setFormOpen(true)} className="mt-3 text-sm font-bold text-brand-dark">Добавить первый тур</button></div>}
       </section>
       {formOpen && <div className="fixed inset-0 z-[60] overflow-y-auto bg-navy/60 p-3 backdrop-blur-sm lg:static lg:z-auto lg:overflow-visible lg:bg-transparent lg:p-0 lg:backdrop-blur-none"><AdminTourForm initialTour={editing} onSave={save} onCancel={() => { setFormOpen(false); setEditing(null); }}/></div>}

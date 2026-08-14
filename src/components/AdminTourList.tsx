@@ -1,0 +1,45 @@
+import { useMemo } from 'react';
+import { Edit3, Eye, EyeOff, Flame, Images, TriangleAlert, Trash2 } from 'lucide-react';
+import { formatPrice, type Tour } from '../data/tours';
+import { optimizedImageUrl } from '../utils/image';
+import { withUniqueTourCovers } from '../utils/tourImages';
+
+type Props = {
+  tours: Tour[];
+  onEdit: (tour: Tour) => void;
+  onToggleHidden: (tour: Tour) => void;
+  onRemove: (tour: Tour) => void;
+};
+
+const fallbackPattern = /picsum\.photos|photo-1500530855697-b586d89ba3ee/i;
+
+export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove }: Props) {
+  const previews = useMemo(() => new Map(withUniqueTourCovers(tours).map(tour => [tour.id, tour.coverImage ?? tour.images[0]])), [tours]);
+
+  return <div className="space-y-3">{tours.map(tour => {
+    const sourceImages = [...new Set(tour.images.filter(Boolean))];
+    const hasFallback = sourceImages.some(image => fallbackPattern.test(image));
+    return <article key={tour.id} className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 shadow-sm sm:flex-row sm:items-center ${tour.isHidden ? 'border-slate-200 opacity-65' : 'border-slate-100'}`}>
+      <img src={optimizedImageUrl(previews.get(tour.id), 240)} alt={tour.hotel} className="h-28 w-full rounded-xl object-cover sm:h-20 sm:w-28"/>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="truncate font-black text-navy">{tour.hotel}</h2>
+          {tour.isHot && <Flame className="size-4 shrink-0 fill-brand text-brand"/>}
+          {tour.isHidden && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase text-slate-500">Скрыт</span>}
+        </div>
+        <p className="mt-1 text-sm text-slate-500">{tour.country}, {tour.resort} · {tour.nights} ночей</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-bold">
+          <span className="flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-blue-700"><Images className="size-3"/>{sourceImages.length} фото</span>
+          {sourceImages.length < 3 && <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-amber-700"><TriangleAlert className="size-3"/>Мало фото</span>}
+          {hasFallback && <span className="rounded-full bg-red-50 px-2 py-1 text-red-600">Резерв</span>}
+        </div>
+        <p className="mt-2 font-black text-brand-dark">{formatPrice(tour.price)}</p>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => onEdit(tour)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-mist px-4 py-3 text-sm font-extrabold text-brand-dark hover:bg-brand/15"><Edit3 className="size-4"/>Изменить</button>
+        <button onClick={() => onToggleHidden(tour)} className={`grid size-11 shrink-0 place-items-center rounded-xl ${tour.isHidden ? 'bg-brand/10 text-brand-dark hover:bg-brand/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`} aria-label={`${tour.isHidden ? 'Показать' : 'Скрыть'} ${tour.hotel}`}>{tour.isHidden ? <Eye className="size-4"/> : <EyeOff className="size-4"/>}</button>
+        <button onClick={() => onRemove(tour)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100" aria-label={`Удалить ${tour.hotel}`}><Trash2 className="size-4"/></button>
+      </div>
+    </article>;
+  })}</div>;
+}
