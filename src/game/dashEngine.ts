@@ -1,3 +1,5 @@
+import { renderDashScene, type DashObstacle, DASH_GROUND, DASH_HEIGHT, DASH_WIDTH } from './dashRenderer';
+
 export type GameStatus = 'ready' | 'playing' | 'paused' | 'lost';
 
 export interface GameSnapshot {
@@ -6,16 +8,6 @@ export interface GameSnapshot {
   status: GameStatus;
 }
 
-interface Obstacle {
-  x: number;
-  width: number;
-  height: number;
-  type: 'spike' | 'block';
-}
-
-const WIDTH = 960;
-const HEIGHT = 420;
-const GROUND = 330;
 const PLAYER_X = 145;
 const PLAYER_SIZE = 38;
 const JUMP_SPEED = -720;
@@ -52,12 +44,13 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
   let emittedScore = -1;
   let emittedBest = -1;
   let emittedStatus: GameStatus | null = null;
-  let playerY = GROUND - PLAYER_SIZE;
+  let playerY = DASH_GROUND - PLAYER_SIZE;
   let velocity = 0;
+  let grounded = true;
   let rotation = 0;
   let bufferedJump = 0;
   let spawnDistance = 440;
-  let obstacles: Obstacle[] = [];
+  let obstacles: DashObstacle[] = [];
 
   function emitState() {
     const roundedScore = Math.floor(score);
@@ -68,7 +61,7 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
 
   function reset() {
     status = 'ready'; score = 0; velocity = 0; rotation = 0;
-    playerY = GROUND - PLAYER_SIZE; bufferedJump = 0; spawnDistance = 440; obstacles = [];
+    playerY = DASH_GROUND - PLAYER_SIZE; grounded = true; bufferedJump = 0; spawnDistance = 440; obstacles = [];
     emitState();
   }
 
@@ -76,7 +69,7 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
     if (status === 'paused') return;
     if (status === 'lost') reset();
     if (status === 'ready') status = 'playing';
-    if (playerY >= GROUND - PLAYER_SIZE - 1) velocity = JUMP_SPEED;
+    if (grounded) { velocity = JUMP_SPEED; grounded = false; }
     else bufferedJump = JUMP_BUFFER;
     emitState();
   }
@@ -89,36 +82,56 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
   }
 
   function addObstacle() {
-    const block = Math.random() > .7;
-    obstacles.push({ x: WIDTH + 30, width: block ? 48 : 40, height: block ? 58 : 42, type: block ? 'block' : 'spike' });
-    spawnDistance = 250 + Math.random() * 250;
+    const block = Math.random() > .68;
+    const doubleSpike = !block && Math.random() > .55;
+    obstacles.push({
+      x: DASH_WIDTH + 30,
+      width: block ? 54 + Math.random() * 24 : doubleSpike ? 76 : 40,
+      height: block ? 50 + Math.random() * 24 : 42,
+      type: block ? 'block' : 'spike',
+    });
+    spawnDistance = 280 + Math.random() * 280;
   }
 
   function update(delta: number) {
     if (status !== 'playing') return;
     const speed = 340 + Math.min(score * .55, 150);
-    const wasAirborne = playerY < GROUND - PLAYER_SIZE;
+    const wasGrounded = grounded;
+    const previousBottom = playerY + PLAYER_SIZE;
     bufferedJump = Math.max(0, bufferedJump - delta);
-    velocity += GRAVITY * delta;
-    playerY = Math.min(GROUND - PLAYER_SIZE, playerY + velocity * delta);
-    if (playerY >= GROUND - PLAYER_SIZE) {
-      velocity = 0;
-      rotation = Math.round(rotation / QUARTER_TURN) * QUARTER_TURN;
-      if (wasAirborne && bufferedJump > 0) {
-        velocity = JUMP_SPEED;
-        bufferedJump = 0;
-      }
-    } else rotation = (rotation + delta * 5.5) % (Math.PI * 2);
     spawnDistance -= speed * delta;
     if (spawnDistance <= 0) addObstacle();
     obstacles.forEach(obstacle => { obstacle.x -= speed * delta; });
     obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > -10);
-    score += delta * 10;
 
-    const inset = 7;
-    const hit = obstacles.some(obstacle => PLAYER_X + PLAYER_SIZE - inset > obstacle.x + 5
-      && PLAYER_X + inset < obstacle.x + obstacle.width - 5
-      && playerY + PLAYER_SIZE - inset > GROUND - obstacle.height);
+    velocity += GRAVITY * delta;
+    let nextY = Math.min(DASH_GROUND - PLAYER_SIZE, playerY + velocity * delta);
+    grounded = nextY >= DASH_GROUND - PLAYER_SIZE;
+    let hit = false;
+    const playerLeft = PLAYER_X + 5;
+    const playerRight = PLAYER_X + PLAYER_SIZE - 5;
+    obstacles.forEach(obstacle => {
+      if (playerRight <= obstacle.x + 4 || playerLeft >= obstacle.x + obstacle.width - 4) return;
+      const obstacleTop = DASH_GROUND - obstacle.height;
+      const landsOnTop = obstacle.type === 'block' && velocity >= 0
+        && previousBottom <= obstacleTop + 7 && nextY + PLAYER_SIZE >= obstacleTop;
+      if (landsOnTop) {
+        nextY = obstacleTop - PLAYER_SIZE;
+        velocity = 0;
+        grounded = true;
+      } else if (nextY + PLAYER_SIZE - 7 > obstacleTop) hit = true;
+    });
+    playerY = nextY;
+    if (grounded) {
+      velocity = 0;
+      rotation = Math.round(rotation / QUARTER_TURN) * QUARTER_TURN;
+      if (!wasGrounded && bufferedJump > 0) {
+        velocity = JUMP_SPEED;
+        grounded = false;
+        bufferedJump = 0;
+      }
+    } else rotation = (rotation + delta * 5.5) % (Math.PI * 2);
+    score += delta * 10;
     if (hit) {
       status = 'lost';
       best = Math.max(best, Math.floor(score));
@@ -127,36 +140,12 @@ export function createDashEngine(canvas: HTMLCanvasElement, onChange: (state: Ga
     emitState();
   }
 
-  function draw() {
-    const gradient = context.createLinearGradient(0, 0, 0, HEIGHT);
-    gradient.addColorStop(0, '#18295f'); gradient.addColorStop(1, '#6e39a8');
-    context.fillStyle = gradient; context.fillRect(0, 0, WIDTH, HEIGHT);
-    context.globalAlpha = .15; context.strokeStyle = '#fff'; context.lineWidth = 1;
-    const offset = (score * 9) % 48;
-    for (let x = -offset; x < WIDTH; x += 48) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, GROUND); context.stroke(); }
-    for (let y = 42; y < GROUND; y += 48) { context.beginPath(); context.moveTo(0, y); context.lineTo(WIDTH, y); context.stroke(); }
-    context.globalAlpha = 1; context.fillStyle = '#152143'; context.fillRect(0, GROUND, WIDTH, HEIGHT - GROUND);
-    context.fillStyle = '#60f0d0'; context.fillRect(0, GROUND, WIDTH, 7);
-
-    obstacles.forEach(obstacle => {
-      context.fillStyle = obstacle.type === 'block' ? '#ffbd3e' : '#ff5470';
-      context.strokeStyle = '#fff'; context.lineWidth = 3; context.beginPath();
-      if (obstacle.type === 'spike') {
-        context.moveTo(obstacle.x, GROUND); context.lineTo(obstacle.x + obstacle.width / 2, GROUND - obstacle.height); context.lineTo(obstacle.x + obstacle.width, GROUND);
-      } else context.rect(obstacle.x, GROUND - obstacle.height, obstacle.width, obstacle.height);
-      context.closePath(); context.fill(); context.stroke();
-    });
-
-    context.save(); context.translate(PLAYER_X + PLAYER_SIZE / 2, playerY + PLAYER_SIZE / 2); context.rotate(rotation);
-    context.fillStyle = '#60f0d0'; context.strokeStyle = '#fff'; context.lineWidth = 4;
-    context.fillRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE); context.strokeRect(-PLAYER_SIZE / 2, -PLAYER_SIZE / 2, PLAYER_SIZE, PLAYER_SIZE);
-    context.fillStyle = '#18295f'; context.fillRect(-10, -8, 6, 8); context.fillRect(5, -8, 6, 8); context.fillRect(-9, 8, 20, 5); context.restore();
-  }
-
   function loop(time: number) {
     const delta = Math.min((time - previousTime) / 1000 || 0, .032); previousTime = time;
-    update(delta); draw(); frame = requestAnimationFrame(loop);
+    update(delta);
+    renderDashScene(context, obstacles, { x: PLAYER_X, y: playerY, size: PLAYER_SIZE, rotation }, score);
+    frame = requestAnimationFrame(loop);
   }
-  canvas.width = WIDTH; canvas.height = HEIGHT; reset(); frame = requestAnimationFrame(loop);
+  canvas.width = DASH_WIDTH; canvas.height = DASH_HEIGHT; reset(); frame = requestAnimationFrame(loop);
   return { jump, reset, togglePause, destroy: () => cancelAnimationFrame(frame) };
 }
