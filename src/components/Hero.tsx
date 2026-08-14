@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { ArrowRight, Bot, Check, Play } from 'lucide-react';
 import { Header } from './Header';
+import { PromoVideoModal } from './PromoVideoModal';
 import { SectionLink } from './SectionLink';
 
 export function Hero() {
+  const [videoOpen, setVideoOpen] = useState(false);
+
   return (
     <section id="top" className="relative min-h-[760px] overflow-hidden bg-navy text-white md:min-h-[820px]">
       <img src="/images/nexttour-hero.jpg" alt="Тропический курорт с лазурной лагуной" fetchPriority="high" decoding="async" className="absolute inset-0 size-full object-cover object-[68%_center]" />
@@ -26,7 +30,8 @@ export function Hero() {
           </div>
         </div>
       </div>
-      <button className="absolute bottom-36 right-[8%] z-10 hidden size-20 place-items-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur-md transition hover:scale-105 xl:grid" aria-label="Смотреть видео"><Play className="ml-1 size-7 fill-white" /></button>
+      <button onClick={() => setVideoOpen(true)} className="absolute bottom-36 right-[8%] z-10 hidden size-20 place-items-center rounded-full border border-white/30 bg-white/15 text-white backdrop-blur-md transition hover:scale-105 xl:grid" aria-label="Смотреть видео о NextTour" aria-expanded={videoOpen}><Play className="ml-1 size-7 fill-white" /></button>
+      {videoOpen && <PromoVideoModal onClose={() => setVideoOpen(false)}/>}
     </section>
   );
 }
