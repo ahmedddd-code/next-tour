@@ -39,9 +39,30 @@ export function ToursProvider({ children }: { children: ReactNode }) {
   useAutoRefresh(load, refreshInterval);
   const reloadAll = async () => { await Promise.all([load(), loadAdminTours()]); };
   const save = async (tour: Tour) => { await invokeToursData({ action: 'admin_upsert_tour', tour }, true); await reloadAll(); };
+  const setTourHidden = async (id: string, hidden: boolean) => {
+    const updateVisibility = (items: Tour[]) => items.map(tour => tour.id === id ? { ...tour, isHidden: hidden } : tour);
+
+    // Отражаем нажатие сразу, не дожидаясь запроса и повторной загрузки каталога.
+    setAdminTours(updateVisibility);
+    setTours(current => {
+      const updated = hidden ? current.filter(tour => tour.id !== id) : updateVisibility(current);
+      cacheTours(updated);
+      return updated;
+    });
+
+    try {
+      await invokeToursData({ action: 'admin_set_tour_hidden', id, hidden }, true);
+    } catch (error) {
+      // Сервер не принял изменение — возвращаем фактическое состояние из облака.
+      await reloadAll();
+      throw error;
+    }
+
+    await reloadAll();
+  };
   const value = useMemo<ToursContextValue>(() => ({
     tours, allTours: tours, adminTours, addTour: save, updateTour: save, loadAdminTours,
-    setTourHidden: async (id, hidden) => { await invokeToursData({ action: 'admin_set_tour_hidden', id, hidden }, true); await reloadAll(); },
+    setTourHidden,
     deleteTour: async id => { await invokeToursData({ action: 'admin_delete_tour', id }, true); await reloadAll(); },
     resetTours: async () => { await invokeToursData({ action: 'admin_reset_tours', tours: defaultTours }, true); await reloadAll(); },
   }), [tours, adminTours, load, loadAdminTours]);
