@@ -1,6 +1,7 @@
 import { ArrowLeft, CalendarDays, Check, ExternalLink, Flame, MapPin, Plane, Star, Utensils } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { TourCard } from '../components/TourCard';
@@ -10,6 +11,7 @@ import { formatPrice } from '../data/tours';
 import { useTours } from '../hooks/useTours';
 import { BookingsProvider } from '../hooks/useBookings';
 import { NotFoundPage } from './NotFoundPage';
+import { useRecentlyViewed } from '../hooks/useTourMemory';
 
 export function TourPage() {
   return <BookingsProvider><TourContent/></BookingsProvider>;
@@ -19,6 +21,8 @@ function TourContent() {
   const { tours, allTours } = useTours();
   const { id } = useParams();
   const tour = allTours.find(item => item.id === id);
+  const { rememberTour } = useRecentlyViewed();
+  useEffect(() => { if (tour) rememberTour(tour.id); }, [tour, rememberTour]);
   if (!tour) return <NotFoundPage/>;
   const similar = tours.filter(item => item.id !== tour.id && (item.country === tour.country || item.price <= tour.price * 1.25)).slice(0, 3);
 

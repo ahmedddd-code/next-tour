@@ -6,6 +6,9 @@ import { Header } from '../components/Header';
 import { formatPrice } from '../data/tours';
 import { BookingsProvider, useBookings } from '../hooks/useBookings';
 import { useAuth } from '../hooks/useAuth';
+import { TourCard } from '../components/TourCard';
+import { useFavorites } from '../hooks/useTourMemory';
+import { useTours } from '../hooks/useTours';
 
 type Tab = 'profile' | 'bookings' | 'favorites' | 'settings';
 const tabs: Array<{ id: Tab; label: string; icon: typeof UserRound }> = [
@@ -20,6 +23,9 @@ export function AccountPage() {
 function AccountContent() {
   const { user, profile, loading, openAuth, logout } = useAuth();
   const { bookings } = useBookings();
+  const { allTours } = useTours();
+  const { favorites } = useFavorites();
+  const favoriteTours = allTours.filter(tour => favorites.some(item => item.id === tour.id));
   const [params, setParams] = useSearchParams();
   const requested = params.get('tab') as Tab | null;
   const active = tabs.some(tab => tab.id === requested) ? requested! : 'profile';
@@ -32,7 +38,7 @@ function AccountContent() {
       <section className="min-w-0 rounded-[28px] bg-white p-6 shadow-sm sm:p-8">
         {active === 'profile' && <div><h2 className="text-2xl font-black">Личные данные</h2><div className="mt-7 grid gap-4 sm:grid-cols-2">{[['Имя', profile.firstName], ['Фамилия', profile.lastName], ['Отчество', profile.middleName || '—'], ['Телефон', profile.phone], ['Email', profile.email], ['Дата рождения', profile.birthDate || '—'], ['Город', profile.city || '—']].map(([label, value]) => <div key={label} className="rounded-2xl bg-mist p-4"><p className="text-xs font-bold text-slate-400">{label}</p><p className="mt-1 font-black text-navy">{value}</p></div>)}</div></div>}
         {active === 'bookings' && <div><h2 className="text-2xl font-black">Мои бронирования</h2><p className="mt-2 text-sm text-slate-500">Все заявки, отправленные из вашего аккаунта.</p><div className="mt-7 space-y-4">{bookings.map(booking => <article key={booking.id} className="rounded-2xl border border-slate-100 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-black text-navy">{booking.tourHotel}</h3><p className="mt-1 flex items-center gap-1 text-sm text-slate-500"><MapPin className="size-4 text-brand"/>{booking.tourDestination}</p></div><span className={`rounded-full px-3 py-1.5 text-xs font-black ${booking.status === 'new' ? 'bg-amber-50 text-amber-700' : 'bg-brand/10 text-brand-dark'}`}>{booking.status === 'new' ? 'На рассмотрении' : 'Обработана'}</span></div><div className="mt-4 flex flex-wrap gap-4 text-xs font-bold text-slate-500"><span className="flex items-center gap-1"><CalendarDays className="size-4"/>{booking.tripDate || 'Дата уточняется'}</span><span>{booking.adults} взрослых · {booking.children} детей</span><span className="text-navy">{formatPrice(booking.tourPrice)}</span></div></article>)}{bookings.length === 0 && <div className="rounded-2xl bg-mist py-14 text-center"><Briefcase className="mx-auto size-10 text-slate-300"/><p className="mt-3 font-black">Заявок пока нет</p><p className="mt-1 text-sm text-slate-500">Выберите тур и отправьте первую заявку.</p></div>}</div></div>}
-        {active === 'favorites' && <div className="py-16 text-center"><Bookmark className="mx-auto size-12 text-brand"/><h2 className="mt-4 text-2xl font-black">Избранные туры</h2><p className="mt-2 text-sm text-slate-500">Скоро здесь можно будет сохранять понравившиеся предложения.</p></div>}
+        {active === 'favorites' && <div><h2 className="text-2xl font-black">Избранные туры</h2><p className="mt-2 text-sm text-slate-500">Сохранённые предложения и изменения их стоимости.</p>{favoriteTours.length > 0 ? <div className="mt-7 grid gap-5 xl:grid-cols-2">{favoriteTours.map(tour => { const savedPrice = favorites.find(item => item.id === tour.id)?.savedPrice ?? tour.price; return <div key={tour.id} className="min-w-0">{tour.price < savedPrice && <p className="mb-2 rounded-xl bg-brand/10 px-3 py-2 text-xs font-black text-brand-dark">Цена снизилась на {formatPrice(savedPrice - tour.price)}</p>}<TourCard tour={tour}/></div>; })}</div> : <div className="py-16 text-center"><Bookmark className="mx-auto size-12 text-brand"/><h3 className="mt-4 text-xl font-black">Пока ничего не сохранено</h3><p className="mt-2 text-sm text-slate-500">Нажмите на сердечко в карточке понравившегося тура.</p></div>}</div>}
         {active === 'settings' && <div><h2 className="text-2xl font-black">Настройки</h2><div className="mt-6 rounded-2xl bg-mist p-5"><p className="font-black">Безопасная сессия</p><p className="mt-2 text-sm leading-6 text-slate-500">Вход защищён Supabase Auth. Сессия автоматически обновляется с помощью JWT.</p></div><button onClick={() => void logout()} className="mt-6 rounded-2xl bg-red-50 px-6 py-3 text-sm font-black text-red-600 hover:bg-red-100">Выйти из аккаунта</button></div>}
       </section></div></div><Footer/></main>;
 }

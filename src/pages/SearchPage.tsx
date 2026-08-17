@@ -4,6 +4,7 @@ import { Footer } from '../components/Footer';
 import { PageHeader } from '../components/PageHeader';
 import { TourCard } from '../components/TourCard';
 import { TourSearch } from '../components/TourSearch';
+import { RecentlyViewed } from '../components/RecentlyViewed';
 import { useTours } from '../hooks/useTours';
 
 const quickDestinations = ['Турция', 'ОАЭ', 'Таиланд', 'Мальдивы'];
@@ -17,6 +18,7 @@ export function SearchPage() {
   return <main className="min-h-screen bg-[#f7faf8]">
     <PageHeader eyebrow="Начните путешествие" title="Подобрать тур"/>
     <TourSearch standalone/>
+    <RecentlyViewed/>
 
     <section className="section-shell pb-14 pt-4 sm:pb-20 sm:pt-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
