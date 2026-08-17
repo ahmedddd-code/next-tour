@@ -5,6 +5,7 @@ export type PartnerTour = {
   partnerSource: string; externalOfferId: string; sourceUrl: string; syncedAt: string; priceCheckedAt: string;
   room?: string; tourProgram?: string; availability?: string; sourcePrice?: number; sourceCurrency?: string;
   sourceHotelId?: string;
+  operatorImagesImportedAt?: string; operatorImageCount?: number;
   fuelSurcharge?: number; status?: 'active' | 'outdated'; dedupeKey?: string; bestPrice?: boolean;
   partnerOffers?: PartnerOffer[];
 };

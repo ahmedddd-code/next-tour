@@ -3,6 +3,7 @@ import { syncSamoSources } from './samo.ts';
 import { syncPegas } from './pegas.ts';
 import type { PartnerTour, SyncResult } from './types.ts';
 import { mergeDuplicateTours } from './dedupe.ts';
+import { getOperatorGallery, mapWithConcurrency } from './photos.ts';
 
 const url = Deno.env.get('SUPABASE_URL');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -47,8 +48,20 @@ Deno.serve(async request => {
     const previousByKey = new Map(existingRows.filter(row => row.normalized_key).map(row => [row.normalized_key!, row]));
     const priceChanges: Array<Record<string, unknown>> = [];
     for (let index = 0; index < tours.length; index += 200) {
-      const rows = tours.slice(index, index + 200).map(tour => {
+      const preparedTours = await mapWithConcurrency(tours.slice(index, index + 200), 12, async tour => {
         const previous = previousByKey.get(tour.dedupeKey ?? '')?.data as PartnerTour | undefined;
+        const samePhotoOwner = previous?.partnerSource === tour.partnerSource && previous.externalOfferId === tour.externalOfferId;
+        const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(image => image !== '/images/tour-placeholder.svg') : [];
+        const currentSourceImages = tour.images.filter(image => image !== '/images/tour-placeholder.svg');
+        if (previousSourceImages.length > 1 || (samePhotoOwner && previous?.operatorImagesImportedAt)) {
+          return { tour, previous, images: previousSourceImages.length ? previousSourceImages : currentSourceImages,
+            importedAt: previous.operatorImagesImportedAt ?? new Date().toISOString() };
+        }
+        const gallery = await getOperatorGallery(tour);
+        const images = [...new Set([...previousSourceImages, ...currentSourceImages, ...gallery])];
+        return { tour, previous, images, importedAt: new Date().toISOString() };
+      });
+      const rows = preparedTours.map(({ tour, previous, images, importedAt }) => {
         const oldOffers = new Map((previous?.partnerOffers ?? []).map(offer => [offer.source, offer]));
         for (const offer of tour.partnerOffers ?? []) {
           const old = oldOffers.get(offer.source);
@@ -56,10 +69,8 @@ Deno.serve(async request => {
             partner_source: offer.source, external_offer_id: offer.externalOfferId, old_price: old.price,
             new_price: offer.price, currency: offer.currency, changed_at: tour.priceCheckedAt });
         }
-        const samePhotoOwner = previous?.partnerSource === tour.partnerSource && previous.externalOfferId === tour.externalOfferId;
-        const currentSourceImages = tour.images.filter(image => image !== '/images/tour-placeholder.svg');
-        const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(image => image !== '/images/tour-placeholder.svg') : [];
-        const currentTour = { ...tour, images: [...new Set(previousSourceImages.length ? previousSourceImages : currentSourceImages.length ? currentSourceImages : ['/images/tour-placeholder.svg'])] };
+        const currentTour = { ...tour, images: images.length ? images : ['/images/tour-placeholder.svg'],
+          operatorImagesImportedAt: importedAt, operatorImageCount: images.length };
         return { id: tour.id, data: currentTour, updated_at: tour.syncedAt, last_seen_at: tour.syncedAt,
           sync_status: 'active', normalized_key: tour.dedupeKey };
       });
