@@ -1,6 +1,5 @@
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { tours as defaultTours } from '../data/tours';
 import { useTours } from '../hooks/useTours';
 import { useDepartureCity } from '../hooks/useDepartureCity';
 import { TourCard } from './TourCard';
@@ -8,11 +7,11 @@ import { cityInGenitive } from '../data/kazakhstanCities';
 import { optimizedImageSrcSet, optimizedImageUrl, showTravelImageFallback } from '../utils/image';
 
 export const destinations = [
-  { name: 'Мальдивы', meta: 'Белый песок и тишина', image: defaultTours[0].images[0], span: 'md:col-span-2 md:row-span-2' },
-  { name: 'Бали', meta: 'Остров вдохновения', image: defaultTours[4].images[0], span: '' },
-  { name: 'Дубай', meta: 'Город будущего', image: defaultTours[3].images[0], span: '' },
-  { name: 'Турция', meta: 'Всё включено', image: defaultTours[1].images[0], span: '' },
-  { name: 'Таиланд', meta: 'Тропики круглый год', image: defaultTours[2].images[0], span: '' },
+  { name: 'Мальдивы', meta: 'Белый песок и тишина', image: 'https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=1600&q=85', span: 'md:col-span-2 md:row-span-2' },
+  { name: 'Бали', meta: 'Остров вдохновения', image: 'https://images.unsplash.com/photo-1555865138-7bdb1371f2b8?auto=format&fit=crop&w=1600&q=85', span: '' },
+  { name: 'Дубай', meta: 'Город будущего', image: 'https://images.unsplash.com/photo-1745750434535-5943ef2fd31a?auto=format&fit=crop&w=1600&q=85', span: '' },
+  { name: 'Турция', meta: 'Всё включено', image: 'https://images.unsplash.com/photo-1708174093277-1651b2b99799?auto=format&fit=crop&w=1600&q=85', span: '' },
+  { name: 'Таиланд', meta: 'Тропики круглый год', image: 'https://images.unsplash.com/photo-1709034042010-543a7fcd91cb?auto=format&fit=crop&w=1600&q=85', span: '' },
 ];
 
 function Heading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
