@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
+import { HomeShortcut } from './components/HomeShortcut';
 import { ScreamerShortcut } from './components/ScreamerShortcut';
 import { ScrollManager } from './components/ScrollManager';
 import { useAuth } from './hooks/useAuth';
@@ -43,5 +44,5 @@ export default function App() {
   return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes>
     <Route path="/" element={<HomePage/>}/><Route path="/search" element={<SearchPage/>}/><Route path="/destinations" element={<DestinationsPage/>}/><Route path="/ai" element={<AiPage/>}/><Route path="/reviews" element={<ReviewsPage/>}/><Route path="/contacts" element={<ContactsPage/>}/>
     <Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="/game" element={<GamePage/>}/><Route path="*" element={<NotFoundPage/>}/>
-  </Routes></Suspense><PublicOverlays/><AuthExperience/></>;
+  </Routes></Suspense><HomeShortcut/><PublicOverlays/><AuthExperience/></>;
 }
