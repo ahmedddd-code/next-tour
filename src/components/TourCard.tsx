@@ -18,10 +18,10 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
         {tour.bestPrice && <span className="absolute bottom-4 right-4 rounded-full bg-brand px-3 py-1.5 text-xs font-black text-white shadow-lg">Лучшая цена</span>}
         <span className="absolute bottom-4 left-4 flex items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-extrabold text-navy"><Star className="size-3.5 fill-amber-400 text-amber-400" />{tour.partnerSource ? `${Math.round(tour.rating)}★` : tour.rating}{!tour.partnerSource && tour.reviews > 0 && <span className="font-medium text-slate-400">({tour.reviews})</span>}</span>
       </Link>
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-dark"><MapPin className="size-3.5" />{tour.country} · {tour.resort}</p>
         <Link to={`/tour/${tour.id}`}><h3 className="mt-2 text-xl font-black leading-tight tracking-[-.025em] text-navy transition group-hover:text-brand-dark">{tour.hotel}</h3></Link>
-        <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-slate-500">
+        <div className="mt-4 grid gap-2 text-sm text-slate-500 min-[390px]:grid-cols-2">
           <span className="flex items-center gap-1.5"><Plane className="size-4 text-slate-400" />из {tour.departureCity}</span>
           <span className="flex items-center gap-1.5"><CalendarDays className="size-4 text-slate-400" />{tour.dates}</span>
         </div>

@@ -14,7 +14,7 @@ export function Header() {
   const { user, loading, openAuth } = useAuth();
   return (
     <header className="absolute inset-x-0 top-0 z-30 border-b border-white/15 bg-navy/10 backdrop-blur-sm">
-      <div className="section-shell flex h-20 items-center justify-between gap-4 2xl:h-24">
+      <div className="section-shell flex h-18 items-center justify-between gap-3 sm:h-20 sm:gap-4 2xl:h-24">
         <Logo light />
         <nav className="hidden items-center gap-5 xl:flex 2xl:gap-7">
           <Link to="/tours" className="text-sm font-semibold text-white/85 transition hover:text-white">Туры</Link>
@@ -30,7 +30,7 @@ export function Header() {
           {open ? <X /> : <Menu />}
         </button>
       </div>
-      {open && <nav className="section-shell mb-4 flex flex-col rounded-2xl bg-white p-3 shadow-2xl xl:hidden">
+      {open && <nav className="section-shell mb-4 max-h-[calc(100dvh-5.5rem)] overflow-y-auto rounded-2xl bg-white p-3 shadow-2xl xl:hidden">
         <DepartureCitySelector className="mb-2 w-full"/>
         <Link to="/tours" onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">Туры</Link>
         {sectionLinks.map(([label, section]) => <SectionLink key={section} section={section} onNavigate={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">{label}</SectionLink>)}

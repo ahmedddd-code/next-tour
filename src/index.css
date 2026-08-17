@@ -10,8 +10,10 @@
 
 html { scroll-behavior: smooth; text-size-adjust: 100%; }
 body { margin: 0; min-width: 320px; overflow-x: hidden; background: #fff; color: #071d34; -webkit-overflow-scrolling: touch; }
-img, video { max-width: 100%; }
-button, input, select { font: inherit; }
+*, *::before, *::after { box-sizing: border-box; }
+img, video { display: block; max-width: 100%; }
+button, input, select, textarea { max-width: 100%; font: inherit; }
+button, a { overflow-wrap: anywhere; }
 button, a { -webkit-tap-highlight-color: transparent; }
 
 @media (hover: none) and (pointer: coarse) {
@@ -73,8 +75,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .screamer-sound { position: absolute; left: 50%; bottom: 2rem; translate: -50% 0; cursor: pointer; border: 2px solid #f00; background: #000; padding: 1rem 1.4rem; color: #fff; font-weight: 900; }
 
 @media (max-width: 640px) {
-  .section-shell { width: calc(100% - 32px); }
-  .hero-frame { min-height: max(720px, 100svh); }
+  .section-shell { width: calc(100% - 24px); }
+  .hero-frame { min-height: max(680px, 100svh); }
+  .section-space { padding-block: 56px; }
+  input, select, textarea { font-size: 16px; }
+}
+
+@media (max-width: 380px) {
+  .section-shell { width: calc(100% - 20px); }
+}
+
+@media (min-width: 2200px) {
+  .section-shell { width: min(1680px, calc(100% - 160px)); }
 }
 
 @media (min-width: 1920px) {
