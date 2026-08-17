@@ -36,7 +36,9 @@ async function samoHotelImages(source: string, hotelId: string, sourceUrl?: stri
   const exactSourceUrl = sourceUrl && !sourceUrl.includes('/search_tour') ? sourceUrl : '';
   const detailUrls = [...new Set([detailUrl, exactSourceUrl].filter(Boolean))];
   const details = await Promise.all(detailUrls.map(target => fetch(target, { headers: { ...headers, Referer: `${config.base}/search_tour` } }).then(result => result.ok ? result.text() : '').catch(() => '')));
-  return absoluteImages([info, ...details].join('\n'), `${config.base}/`);
+  const imageBase = source === 'kompas' ? 'https://kompastour.com/' : `${config.base}/`;
+  const images = absoluteImages([info, ...details].join('\n'), imageBase);
+  return source === 'kompas' ? images.filter(image => /\/useruploads\/(?:hotels|hotels_room)\//i.test(image)) : images;
 }
 
 const countrySlugs: Record<string, string> = {
@@ -98,7 +100,7 @@ Deno.serve(async request => {
   const db = createClient(url, key, { auth: { persistSession: false } });
   const rows: Array<{ id: string; data: unknown }> = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db.from('app_tours').select('id,data').like('id', 'partner-%').range(from, from + 999);
+    const { data, error } = await db.from('app_tours').select('id,data').like('id', 'partner-%').eq('sync_status', 'active').range(from, from + 999);
     if (error) return json({ error: error.message }, 500);
     rows.push(...(data ?? []));
     if (!data || data.length < 1000) break;
@@ -106,7 +108,8 @@ Deno.serve(async request => {
   const candidates = rows.map(row => ({ row, tour: row.data as Tour })).filter(({ tour }) => Boolean(tour.partnerSource));
   const offers = [...new Map(candidates.map(item => [`${item.tour.partnerSource}:${item.tour.externalOfferId || item.tour.id}`, item])).values()];
   const eligible = offers.filter(item => Boolean(item.tour.sourceHotelId) || (item.tour.partnerSource === 'kompas' && Boolean(countrySlugs[item.tour.country])));
-  const cursor = Number.isFinite(requestBody.cursor) ? Math.max(0, Number(requestBody.cursor)) : new Date().getUTCHours() * 60;
+  const requestedCursor = Number.isFinite(requestBody.cursor) ? Math.max(0, Number(requestBody.cursor)) : Math.floor(Date.now() / 3600000) * 60;
+  const cursor = eligible.length ? requestedCursor % eligible.length : 0;
   const selected = requestBody.tourId
     ? candidates.filter(item => item.tour.id === requestBody.tourId)
     : [...eligible.slice(cursor), ...eligible].slice(0, 60);
@@ -174,5 +177,5 @@ Deno.serve(async request => {
   const kompasSamples = selected.filter(item => item.tour.partnerSource === 'kompas').slice(0, 5).map(item => ({
     country: item.tour.country, target: cleanName(item.tour.hotel), catalog: (catalogs.get(item.tour.country) ?? []).slice(0, 3).map(entry => entry.name),
   }));
-  return json({ ok: true, cursor, nextCursor: cursor + selected.length, checked: selected.length, updated, totalOffers: eligible.length, selectedBySource, matched, kompasCatalogs, kompasSamples, warnings, results });
+  return json({ ok: true, cursor, nextCursor: eligible.length ? (cursor + selected.length) % eligible.length : 0, checked: selected.length, updated, totalOffers: eligible.length, selectedBySource, matched, kompasCatalogs, kompasSamples, warnings, results });
 });
