@@ -19,9 +19,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (hover: none) and (pointer: coarse) {
   button:not(:disabled), a, [role="button"], select { transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease !important; }
   button:not(:disabled):active, a:active, [role="button"]:active, select:active { transform: scale(.96); filter: brightness(.92); }
-  button:not(:disabled), a, [role="button"] { position: relative; isolation: isolate; overflow: hidden; }
-  button:not(:disabled)::after, a::after, [role="button"]::after { content: ""; position: absolute; inset: 50%; z-index: -1; border-radius: 999px; background: rgba(255,255,255,.2); opacity: 0; transform: translate(-50%,-50%) scale(0); pointer-events: none; }
-  button:not(:disabled):active::after, a:active::after, [role="button"]:active::after { inset: -35%; opacity: 1; transform: scale(1); transition: transform 160ms ease, opacity 180ms ease; }
   article:has(a[href^="/tour/"]):active { transform: translateY(-4px) scale(.985); box-shadow: 0 18px 45px rgba(0,200,83,.2); }
   article:has(a[href^="/tour/"]):active img { transform: scale(1.03); }
 }
