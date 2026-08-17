@@ -4,19 +4,15 @@ import { Footer } from '../components/Footer';
 import { PageHeader } from '../components/PageHeader';
 import { TourCard } from '../components/TourCard';
 import { TourSearch } from '../components/TourSearch';
-import { useDepartureCity } from '../hooks/useDepartureCity';
 import { useTours } from '../hooks/useTours';
 
 const quickDestinations = ['Турция', 'ОАЭ', 'Таиланд', 'Мальдивы'];
 
 export function SearchPage() {
   const { tours } = useTours();
-  const { city } = useDepartureCity();
-  const localTours = tours.filter(tour => tour.departureCity === city);
-  const offers = (localTours.length ? localTours : tours)
+  const offers = tours
     .slice()
-    .sort((first, second) => Number(second.isHot) - Number(first.isHot) || second.popularity - first.popularity)
-    .slice(0, 6);
+    .sort((first, second) => Number(second.isHot) - Number(first.isHot) || second.popularity - first.popularity);
 
   return <main className="min-h-screen bg-[#f7faf8]">
     <PageHeader eyebrow="Начните путешествие" title="Подобрать тур"/>
@@ -24,7 +20,7 @@ export function SearchPage() {
 
     <section className="section-shell pb-14 pt-4 sm:pb-20 sm:pt-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div><p className="text-xs font-black uppercase tracking-[.18em] text-brand-dark">Актуально сейчас</p><h2 className="mt-2 text-3xl font-black tracking-[-.04em] text-navy sm:text-4xl">Предложения с вылетом из {city}</h2><p className="mt-3 max-w-2xl text-slate-500">Собрали популярные варианты с хорошей ценой. Откройте карточку, чтобы посмотреть даты, питание и условия.</p></div>
+        <div><p className="text-xs font-black uppercase tracking-[.18em] text-brand-dark">Все доступные варианты</p><h2 className="mt-2 text-3xl font-black tracking-[-.04em] text-navy sm:text-4xl">Все туры</h2><p className="mt-3 max-w-2xl text-slate-500">Показываем весь каталог. В каждой карточке указаны город вылета, даты, питание и актуальная стоимость.</p></div>
         <Link to="/tours" className="inline-flex shrink-0 items-center gap-2 font-black text-brand-dark">Все предложения <ArrowRight className="size-4"/></Link>
       </div>
 
