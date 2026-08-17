@@ -21,14 +21,15 @@ export function resizeImage(file: File, maxWidth = 1400): Promise<string> {
 
 export const realTravelHeroImage = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=88';
 const fallbackTravelImage = 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1600&q=84';
-const fallbackTourImage = '/images/tour-placeholder.svg';
+const fallbackTourImage = realTravelHeroImage;
 
 function replaceImage(event: { currentTarget: HTMLImageElement }, fallback: string) {
   const image = event.currentTarget;
   const attempts = Number(image.dataset.fallbackAttempts ?? 0);
+  if (attempts >= 2) { image.style.visibility = 'hidden'; return; }
   image.srcset = '';
   image.dataset.fallbackAttempts = String(attempts + 1);
-  image.src = attempts === 0 ? fallback : fallbackTourImage;
+  image.src = attempts === 0 ? fallback : realTravelHeroImage;
 }
 
 export const showTourImageFallback = (event: { currentTarget: HTMLImageElement }) => replaceImage(event, fallbackTourImage);
