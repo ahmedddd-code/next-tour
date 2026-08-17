@@ -1,4 +1,5 @@
 import type { Tour } from '../data/tours';
+import { realTravelHeroImage } from './image';
 
 const normalizedImage = (image: string) => {
   try {
@@ -64,13 +65,29 @@ const destinationFallbacks: Record<string, string[]> = {
 const hotelFallbacks = [
   'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1200&q=82',
   'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=82',
+  'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=82',
+  realTravelHeroImage,
 ];
+
+const stableFallback = (tour: Tour) => {
+  const destination = destinationFallbacks[tour.country];
+  if (destination?.length) return destination;
+  const hash = [...`${tour.partnerSource}:${tour.externalOfferId ?? tour.id}`]
+    .reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 0);
+  return [hotelFallbacks[hash % hotelFallbacks.length]];
+};
 
 export function completeTourGallery(tour: Tour) {
   const supplied = (tour.images ?? []).filter(Boolean);
   if (tour.partnerSource) {
     const operatorImages = supplied.filter(image => !/tour-placeholder\.svg/i.test(image));
-    return [...new Set(operatorImages.length ? operatorImages : ['/images/tour-placeholder.svg'])];
+    return [...new Set(operatorImages.length ? operatorImages : stableFallback(tour))];
   }
   const curated = curatedGalleries[tour.id] ?? [];
   const destination = destinationFallbacks[tour.country] ?? [];
@@ -81,7 +98,9 @@ export function completeTourGallery(tour: Tour) {
 /** Preserves real supplied photos and never replaces them with random placeholders. */
 export function withUniqueTourCovers(tours: Tour[]) {
   return tours.map(tour => {
+    const usesDestinationPhoto = Boolean(tour.partnerSource)
+      && !(tour.images ?? []).some(image => image && !/tour-placeholder\.svg/i.test(image));
     const images = completeTourGallery(tour);
-    return { ...tour, images, coverImage: images[0] };
+    return { ...tour, images, coverImage: images[0], usesDestinationPhoto };
   });
 }
