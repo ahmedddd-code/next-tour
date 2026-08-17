@@ -3,13 +3,14 @@ import { ArrowRight, Bot, Check, Play } from 'lucide-react';
 import { Header } from './Header';
 import { PromoVideoModal } from './PromoVideoModal';
 import { SectionLink } from './SectionLink';
+import { optimizedImageSrcSet, optimizedImageUrl, realTravelHeroImage, showTravelImageFallback } from '../utils/image';
 
 export function Hero() {
   const [videoOpen, setVideoOpen] = useState(false);
 
   return (
     <section id="top" className="hero-frame relative overflow-hidden bg-navy text-white">
-      <img src="/images/nexttour-hero.jpg" alt="Тропический курорт с лазурной лагуной" fetchPriority="high" decoding="async" className="absolute inset-0 size-full object-cover object-[68%_center]" />
+      <img src={optimizedImageUrl(realTravelHeroImage, 2000, 88)} srcSet={optimizedImageSrcSet(realTravelHeroImage, [960, 1400, 2000])} sizes="100vw" alt="Настоящий тропический пляж с лазурным морем" fetchPriority="high" decoding="async" onError={showTravelImageFallback} className="absolute inset-0 size-full object-cover object-center" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,20,37,.9)_0%,rgba(3,20,37,.64)_42%,rgba(3,20,37,.08)_78%),linear-gradient(0deg,rgba(3,20,37,.35),transparent_55%)]" />
       <Header />
       <div className="hero-frame section-shell relative z-10 flex items-center pt-24 2xl:pt-28">

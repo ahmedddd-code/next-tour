@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Edit3, Eye, EyeOff, Flame, Images, RefreshCw, TriangleAlert, Trash2 } from 'lucide-react';
 import { formatPrice, type Tour } from '../data/tours';
-import { optimizedImageUrl } from '../utils/image';
+import { optimizedImageUrl, showTourImageFallback } from '../utils/image';
 import { withUniqueTourCovers } from '../utils/tourImages';
 
 type Props = {
@@ -31,8 +31,8 @@ export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove, onResyn
     const syncedAt = tour.syncedAt ? new Date(tour.syncedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
     return <article key={tour.id} className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 shadow-sm sm:flex-row sm:items-start ${tour.isHidden ? 'border-slate-200 opacity-65' : 'border-slate-100'}`}>
       <div className="min-w-0 shrink-0 sm:w-32">
-        <img src={optimizedImageUrl(previews.get(tour.id), 320)} alt={tour.hotel} className="h-32 w-full rounded-xl object-cover sm:h-24"/>
-        {sourceImages.length > 1 && <div className="mt-1 flex gap-1 overflow-x-auto pb-1">{sourceImages.slice(1).map((image, index) => <img key={image} src={optimizedImageUrl(image, 96)} alt={`${tour.hotel}, фото ${index + 2}`} loading="lazy" className="h-8 w-8 shrink-0 rounded object-cover"/>)}</div>}
+        <img src={optimizedImageUrl(previews.get(tour.id), 320)} alt={tour.hotel} onError={showTourImageFallback} className="h-32 w-full rounded-xl object-cover sm:h-24"/>
+        {sourceImages.length > 1 && <div className="mt-1 flex gap-1 overflow-x-auto pb-1">{sourceImages.slice(1).map((image, index) => <img key={image} src={optimizedImageUrl(image, 96)} alt={`${tour.hotel}, фото ${index + 2}`} loading="lazy" onError={showTourImageFallback} className="h-8 w-8 shrink-0 rounded object-cover"/>)}</div>}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">

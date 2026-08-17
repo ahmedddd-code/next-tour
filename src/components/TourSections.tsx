@@ -5,7 +5,7 @@ import { useTours } from '../hooks/useTours';
 import { useDepartureCity } from '../hooks/useDepartureCity';
 import { TourCard } from './TourCard';
 import { cityInGenitive } from '../data/kazakhstanCities';
-import { optimizedImageSrcSet, optimizedImageUrl } from '../utils/image';
+import { optimizedImageSrcSet, optimizedImageUrl, showTravelImageFallback } from '../utils/image';
 
 export const destinations = [
   { name: 'Мальдивы', meta: 'Белый песок и тишина', image: defaultTours[0].images[0], span: 'md:col-span-2 md:row-span-2' },
@@ -36,7 +36,7 @@ export function TourSections() {
       <div className="mt-10 text-center"><Link to="/tours" className="inline-flex items-center gap-2 rounded-full bg-navy px-7 py-4 text-sm font-extrabold text-white transition hover:bg-brand-dark">Смотреть все туры <ArrowUpRight className="size-4"/></Link></div>
     </section>
     <section id="destinations" className="render-lazy scroll-mt-24 bg-mist py-24"><div className="section-shell"><Heading eyebrow="Куда поехать" title="Популярные направления" text="Места, в которые хочется возвращаться. Выберите настроение — детали мы берём на себя."/>
-      <div className="grid auto-rows-[220px] gap-4 md:grid-cols-4 md:auto-rows-[190px]">{destinations.map(item => <Link to="/tours" key={item.name} className={`group relative overflow-hidden rounded-3xl ${item.span}`}><img src={optimizedImageUrl(item.image, 800)} srcSet={optimizedImageSrcSet(item.image, [420, 800])} sizes="(max-width: 767px) calc(100vw - 32px), 50vw" alt={item.name} loading="lazy" decoding="async" className="size-full object-cover transition duration-700 group-hover:scale-110"/><div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/10 to-transparent"/><div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-6 text-white"><div><h3 className="text-2xl font-black">{item.name}</h3><p className="mt-1 text-sm text-white/70">{item.meta}</p></div><ArrowUpRight className="transition group-hover:translate-x-1 group-hover:-translate-y-1"/></div></Link>)}</div>
+      <div className="grid auto-rows-[220px] gap-4 md:grid-cols-4 md:auto-rows-[190px]">{destinations.map(item => <Link to="/tours" key={item.name} className={`group relative overflow-hidden rounded-3xl ${item.span}`}><img src={optimizedImageUrl(item.image, 800)} srcSet={optimizedImageSrcSet(item.image, [420, 800])} sizes="(max-width: 767px) calc(100vw - 32px), 50vw" alt={item.name} loading="lazy" decoding="async" onError={showTravelImageFallback} className="size-full object-cover transition duration-700 group-hover:scale-110"/><div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/10 to-transparent"/><div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-6 text-white"><div><h3 className="text-2xl font-black">{item.name}</h3><p className="mt-1 text-sm text-white/70">{item.meta}</p></div><ArrowUpRight className="transition group-hover:translate-x-1 group-hover:-translate-y-1"/></div></Link>)}</div>
     </div></section>
   </>;
 }

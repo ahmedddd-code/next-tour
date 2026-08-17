@@ -19,7 +19,20 @@ export function resizeImage(file: File, maxWidth = 1400): Promise<string> {
   });
 }
 
-const fallbackTourImage = '/images/nexttour-hero.jpg';
+export const realTravelHeroImage = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2000&q=88';
+const fallbackTravelImage = 'https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1600&q=84';
+const fallbackTourImage = '/images/tour-placeholder.svg';
+
+function replaceImage(event: { currentTarget: HTMLImageElement }, fallback: string) {
+  const image = event.currentTarget;
+  const attempts = Number(image.dataset.fallbackAttempts ?? 0);
+  image.srcset = '';
+  image.dataset.fallbackAttempts = String(attempts + 1);
+  image.src = attempts === 0 ? fallback : fallbackTourImage;
+}
+
+export const showTourImageFallback = (event: { currentTarget: HTMLImageElement }) => replaceImage(event, fallbackTourImage);
+export const showTravelImageFallback = (event: { currentTarget: HTMLImageElement }) => replaceImage(event, fallbackTravelImage);
 
 export function optimizedImageUrl(source: string | undefined, width: number, quality = 74) {
   const safeSource = source || fallbackTourImage;
