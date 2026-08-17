@@ -11,11 +11,11 @@ describe('withUniqueTourCovers', () => {
     expect(result[1].images).toEqual(partner.images);
   });
 
-  it('uses a real destination photo when a partner has no photos', () => {
+  it('uses a neutral placeholder when a partner has no exact photos', () => {
     const source = tours[0];
     const result = withUniqueTourCovers([{ ...source, partnerSource: 'selfie', externalOfferId: 'offer-1', images: [] }]);
-    expect(result[0].images[0]).toMatch(/^https:\/\//);
-    expect(result[0].coverImage).not.toContain('tour-placeholder.svg');
+    expect(result[0].images).toEqual(['/images/tour-placeholder.svg']);
+    expect(result[0].coverImage).toBe('/images/tour-placeholder.svg');
   });
 
   it('still completes the gallery for manually managed tours', () => {

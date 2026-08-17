@@ -1,5 +1,4 @@
 import type { Tour } from '../data/tours';
-import { realTravelHeroImage } from './image';
 
 const normalizedImage = (image: string) => {
   try {
@@ -71,7 +70,7 @@ export function completeTourGallery(tour: Tour) {
   const supplied = (tour.images ?? []).filter(Boolean);
   if (tour.partnerSource) {
     const operatorImages = supplied.filter(image => !/tour-placeholder\.svg/i.test(image));
-    return [...new Set(operatorImages.length ? operatorImages : destinationFallbacks[tour.country] ?? [realTravelHeroImage])];
+    return [...new Set(operatorImages.length ? operatorImages : ['/images/tour-placeholder.svg'])];
   }
   const curated = curatedGalleries[tour.id] ?? [];
   const destination = destinationFallbacks[tour.country] ?? [];

@@ -20,7 +20,10 @@ function promotionImages(offer: Promotion) {
       .filter(([key]) => /image|photo|url|src/i.test(key)).forEach(([, child]) => collect(child));
   };
   [offer.hotelImageUrl, offer.hotelImages, offer.images, offer.imageUrls, offer.photos, offer.gallery].forEach(collect);
-  return [...new Set(found)];
+  return [...new Set(found.map(image => image.replace(
+    /^https:\/\/pic-h\.cdn\.pegast\.ru\/getimage-h\/[^/]+\//i,
+    'https://s01.cdn.pegast.ru/get/',
+  )))];
 }
 
 type PromotionResponse = {
@@ -61,7 +64,8 @@ export async function syncPegas(): Promise<SyncResult> {
         description: `${offer.hotelName} — пакетный тур в ${resort}, ${country}. Вылет из города ${departureCity}, даты поездки ${start.toLocaleDateString('ru-RU')}–${end.toLocaleDateString('ru-RU')}, продолжительность ${nights} ночей. Размещение рассчитано для ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}.`,
         included: ['Перелёт по программе тура', `Проживание: ${nights} ночей`, `Размещение: ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}`],
         availability: 'Доступно к бронированию', sourcePrice: Math.round(offer.currentPrice), sourceCurrency, partnerSource: source, externalOfferId,
-        sourceUrl: `https://kz.pegast.asia${offer.constructBookingUrl || offer.hotelDescriptionUrl || '/'}`, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
+        sourceHotelId: offer.hotelDescriptionUrl?.match(/\/Hotel\/(\d+)/i)?.[1],
+        sourceUrl: `https://kz.pegast.asia${offer.hotelDescriptionUrl || offer.constructBookingUrl || '/'}`, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
     }));
     return { source, tours: tours.filter(tour => tour.price > 0) };
   } catch (error) { return { source, tours: [], error: error instanceof Error ? error.message : 'Sync failed' }; }

@@ -53,13 +53,16 @@ Deno.serve(async request => {
         const samePhotoOwner = previous?.partnerSource === tour.partnerSource && previous.externalOfferId === tour.externalOfferId;
         const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(image => image !== '/images/tour-placeholder.svg') : [];
         const currentSourceImages = tour.images.filter(image => image !== '/images/tour-placeholder.svg');
-        if (previousSourceImages.length > 1 || (samePhotoOwner && previous?.operatorImagesImportedAt)) {
-          return { tour, previous, images: previousSourceImages.length ? previousSourceImages : currentSourceImages,
-            importedAt: previous.operatorImagesImportedAt ?? new Date().toISOString() };
-        }
-        const gallery = await getOperatorGallery(tour);
-        const images = [...new Set([...previousSourceImages, ...currentSourceImages, ...gallery])];
-        return { tour, previous, images, importedAt: new Date().toISOString() };
+        const lastImport = previous?.operatorImagesImportedAt ? new Date(previous.operatorImagesImportedAt).getTime() : 0;
+        const sourcePageChanged = previous?.sourceUrl !== tour.sourceUrl;
+        const galleryIsStale = Date.now() - lastImport >= 24 * 60 * 60 * 1000;
+        const shouldRefreshGallery = !samePhotoOwner || sourcePageChanged || galleryIsStale;
+        const gallery = shouldRefreshGallery ? await getOperatorGallery(tour) : previousSourceImages;
+        const freshImages = [...new Set([...currentSourceImages, ...gallery])];
+        const images = gallery.length || !previousSourceImages.length ? freshImages : previousSourceImages;
+        console.info(`[SYNC] Tour: ${tour.hotel}\n[SYNC] Operator: ${tour.partnerSource}\n[SYNC] External ID: ${tour.externalOfferId}\n[SYNC] Source URL: ${tour.sourceUrl}\n[SYNC] Images found: ${gallery.length}\n[SYNC] Main image: ${images[0] ?? 'placeholder'}\n[SYNC] Images saved: ${images.length}`);
+        if (!images.length) console.warn(`[SYNC] WARNING: Images not found for tour ${tour.externalOfferId}; using placeholder`);
+        return { tour, previous, images, importedAt: shouldRefreshGallery ? new Date().toISOString() : previous?.operatorImagesImportedAt ?? new Date().toISOString() };
       });
       const rows = preparedTours.map(({ tour, previous, images, importedAt }) => {
         const oldOffers = new Map((previous?.partnerOffers ?? []).map(offer => [offer.source, offer]));

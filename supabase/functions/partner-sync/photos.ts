@@ -9,9 +9,15 @@ const sourceConfigs: Record<string, { base: string; route: string }> = {
 const cache = new Map<string, Promise<string[]>>();
 
 export function extractOperatorImages(text: string, base: string) {
-  return [...new Set([...text.matchAll(/((?:https?:)?\/\/[^"')\s]+\.(?:jpe?g|webp|png)(?:\?[^"')\s]*)?|\/[^"')\s]+\.(?:jpe?g|webp|png)(?:\?[^"')\s]*)?)/gi)].map(match => {
-    try { return new URL(match[1].replaceAll('\\/', '/'), base).href; } catch { return ''; }
+  const decoded = text.replaceAll('\\u0026quot;', '"').replaceAll('\\u0026amp;', '&')
+    .replaceAll('\\/', '/').replaceAll('&quot;', '"').replaceAll('&amp;', '&');
+  return [...new Set([...decoded.matchAll(/((?:https?:)?\/\/[^"')\s<>]+\.(?:jpe?g|webp|png)(?:\?[^"')\s<>]*)?|\/[^"')\s<>]+\.(?:jpe?g|webp|png)(?:\?[^"')\s<>]*)?)/gi)].map(match => {
+    try { return new URL(match[1], base).href; } catch { return ''; }
   }).filter(image => image && !/logo|icon|flag|banner|hotelparam|loader|sprite|\/www\.(?:jpe?g|webp|png)\//i.test(image)))];
+}
+
+function originalPegasImage(image: string) {
+  return image.replace(/^https:\/\/pic-h\.cdn\.pegast\.ru\/getimage-h\/[^/]+\//i, 'https://s01.cdn.pegast.ru/get/');
 }
 
 async function fetchText(target: string, referer?: string) {
@@ -25,8 +31,14 @@ async function loadGallery(tour: PartnerTour) {
   const config = sourceConfigs[tour.partnerSource];
   const pages: string[] = [];
   let base = tour.sourceUrl || config?.base || '';
+  if (tour.partnerSource === 'pegas' && tour.sourceUrl) {
+    pages.push(await fetchText(tour.sourceUrl, 'https://kz.pegast.asia/'));
+    return [...new Set(extractOperatorImages(pages.join('\n'), 'https://kz.pegast.asia/')
+      .filter(image => /(?:pic-h|s\d+)\.cdn\.pegast\.ru\/(?:getimage-h|Cache|get)\//i.test(image))
+      .map(originalPegasImage))];
+  }
   if (config && tour.sourceHotelId) {
-    const endpoint = `${config.base}${config.route}samo_action=info&embed=${encodeURIComponent(tour.sourceHotelId)}&HOTELINC=${encodeURIComponent(tour.sourceHotelId)}`;
+    const endpoint = `${config.base}${config.route}samo_action=hotel&embed=1&HOTELINC=${encodeURIComponent(tour.sourceHotelId)}`;
     const info = await fetchText(endpoint, `${config.base}/search_tour`);
     pages.push(info);
     const detailPath = (info.match(/href\\?=[\\"']+((?:\\.|[^"'\\])*)/i)?.[1] ?? info.match(/"(?:url|href)"\s*:\s*"((?:\\.|[^"\\])*)/i)?.[1])
