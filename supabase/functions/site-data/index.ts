@@ -131,6 +131,16 @@ Deno.serve(async request => {
     if (action === 'admin_delete_tour') { const { data: existing } = await db.from('app_tours').select('data').eq('id', id).maybeSingle(); const externalId = (existing?.data as Record<string, unknown> | undefined)?.externalOfferId; if (typeof externalId === 'string') await db.from('partner_offer_controls').upsert({ external_id: externalId, hidden: true, updated_at: new Date().toISOString() }); const { error } = await db.from('app_tours').delete().eq('id', id); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_partner_sync_status') { const { data, error } = await db.from('partner_sync_state').select('*').order('source'); if (error) throw error; return json({ sources: data ?? [] }); }
     if (action === 'admin_partner_sync') { const response = await fetch(`${url}/functions/v1/partner-sync`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify({ manual: true }) }); const result = await response.json(); return json(result, response.ok ? 200 : 502); }
+    if (action === 'admin_resync_tour_photos') {
+      if (!id) return json({ error: 'Не указан тур' }, 400);
+      const response = await fetch(`${url}/functions/v1/partner-photo-sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ tourId: id }),
+      });
+      const result = await response.json();
+      return json(result, response.ok ? 200 : 502);
+    }
     if (action === 'admin_reset_tours') { await db.from('app_tours').delete().neq('id', ''); const tours = body.tours as Array<Record<string, unknown>>; const { error } = await db.from('app_tours').insert(tours.map(tour => ({ id: tour.id, data: tour }))); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_booking_status') { const { error } = await db.from('app_bookings').update({ status: body.status, updated_at: new Date().toISOString() }).eq('id', id); if (error) throw error; return json({ ok: true }); }
     if (action === 'admin_delete_booking') { const { error } = await db.from('app_bookings').delete().eq('id', id); if (error) throw error; return json({ ok: true }); }

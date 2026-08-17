@@ -39,10 +39,10 @@ async function mergeGroup(group: Prepared[]) {
   const best = choices[0];
   const fields = prepare(best).fields;
   const dedupeKey = fields.join('|');
-  const images = [...new Set(group.flatMap(item => item.tour.images).filter(validImage))].slice(0, 10);
+  const images = [...new Set(best.images.filter(validImage))];
   const id = `partner-merged-${await stableId(dedupeKey)}`;
   return { ...best, id, price: best.price, oldPrice: choices.length > 1 ? choices[1].price : best.oldPrice,
-    images, status: 'active', dedupeKey, bestPrice: true, partnerOffers: choices.map(toOffer),
+    images: images.length ? images : ['/images/tour-placeholder.svg'], status: 'active', dedupeKey, bestPrice: true, partnerOffers: choices.map(toOffer),
     syncedAt: new Date().toISOString(), priceCheckedAt: best.priceCheckedAt } satisfies PartnerTour;
 }
 

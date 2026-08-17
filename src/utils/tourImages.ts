@@ -67,8 +67,9 @@ const hotelFallbacks = [
 ];
 
 export function completeTourGallery(tour: Tour) {
-  const curated = curatedGalleries[tour.id] ?? [];
   const supplied = (tour.images ?? []).filter(Boolean);
+  if (tour.partnerSource) return [...new Set(supplied.length ? supplied : ['/images/tour-placeholder.svg'])];
+  const curated = curatedGalleries[tour.id] ?? [];
   const destination = destinationFallbacks[tour.country] ?? [];
   const gallery = curated.length >= 3 ? curated : [...curated, ...supplied, ...destination, ...hotelFallbacks];
   return gallery.filter((image, index) => gallery.findIndex(candidate => normalizedImage(candidate) === normalizedImage(image)) === index).slice(0, 3);

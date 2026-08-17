@@ -3,7 +3,7 @@ import { tours as defaultTours, type Tour } from '../data/tours';
 import { withUniqueTourCovers } from '../utils/tourImages';
 import { useAutoRefresh } from './useAutoRefresh';
 
-type ToursContextValue = { tours: Tour[]; allTours: Tour[]; adminTours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; setTourHidden: (id: string, hidden: boolean) => Promise<void>; loadAdminTours: () => Promise<void>; resetTours: () => Promise<void> };
+type ToursContextValue = { tours: Tour[]; allTours: Tour[]; adminTours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; setTourHidden: (id: string, hidden: boolean) => Promise<void>; resyncTourPhotos: (id: string) => Promise<void>; loadAdminTours: () => Promise<void>; resetTours: () => Promise<void> };
 const ToursContext = createContext<ToursContextValue | null>(null);
 const refreshInterval = () => 5 * 60 * 1000;
 const CACHE_KEY = 'nexttour:partner-catalog:v1';
@@ -78,6 +78,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ToursContextValue>(() => ({
     tours, allTours: tours, adminTours, addTour: save, updateTour: save, loadAdminTours,
     setTourHidden,
+    resyncTourPhotos: async id => { await invokeToursData({ action: 'admin_resync_tour_photos', id }, true); await reloadAll(); },
     deleteTour: async id => { await invokeToursData({ action: 'admin_delete_tour', id }, true); await reloadAll(); },
     resetTours: async () => { await invokeToursData({ action: 'admin_reset_tours', tours: defaultTours }, true); await reloadAll(); },
   }), [tours, adminTours, load, loadAdminTours]);

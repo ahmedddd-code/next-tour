@@ -30,19 +30,10 @@ Deno.serve(async request => {
     if (beginError) throw beginError;
     runId = createdRunId as string;
     const { data: controls } = await db.from('partner_offer_controls').select('*');
-    const storedPhotoRows: Array<{ id: string; data: unknown }> = [];
-    for (let from = 0; ; from += 1000) {
-      const { data: page, error: pageError } = await db.from('app_tours').select('id,data').like('id', 'partner-%').range(from, from + 999);
-      if (pageError) throw pageError;
-      storedPhotoRows.push(...(page ?? []));
-      if (!page || page.length < 1000) break;
-    }
-    const storedPhotos = new Map(storedPhotoRows.map(row => [row.id, (row.data as PartnerTour)?.images]).filter((entry): entry is [string, string[]] => Boolean(entry[1]?.some(image => !image.includes('images.unsplash.com')))));
     const controlMap = new Map((controls ?? []).map(control => [control.external_id, control]));
     const collectedTours = results.flatMap(result => result.tours).filter(tour => !controlMap.get(tour.externalOfferId)?.hidden).map(tour => {
       const override = controlMap.get(tour.externalOfferId)?.override_data as Partial<PartnerTour> | undefined;
-      const withStoredPhotos = storedPhotos.has(tour.id) ? { ...tour, images: storedPhotos.get(tour.id)! } : tour;
-      return override ? { ...withStoredPhotos, ...override, id: tour.id, externalOfferId: tour.externalOfferId, syncedAt: tour.syncedAt, priceCheckedAt: tour.priceCheckedAt } : withStoredPhotos;
+      return override ? { ...tour, ...override, id: tour.id, externalOfferId: tour.externalOfferId, syncedAt: tour.syncedAt, priceCheckedAt: tour.priceCheckedAt } : tour;
     });
     const uniqueRawTours = [...new Map(collectedTours.map(tour => [tour.externalOfferId, tour])).values()];
     const tours = await mergeDuplicateTours(uniqueRawTours);
@@ -65,12 +56,23 @@ Deno.serve(async request => {
             partner_source: offer.source, external_offer_id: offer.externalOfferId, old_price: old.price,
             new_price: offer.price, currency: offer.currency, changed_at: tour.priceCheckedAt });
         }
-        const savedImages = previous?.images?.some(image => !image.includes('images.unsplash.com')) ? previous.images : tour.images;
-        const currentTour = { ...tour, images: [...new Set(savedImages)].slice(0, 10) };
+        const samePhotoOwner = previous?.partnerSource === tour.partnerSource && previous.externalOfferId === tour.externalOfferId;
+        const currentSourceImages = tour.images.filter(image => image !== '/images/tour-placeholder.svg');
+        const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(image => image !== '/images/tour-placeholder.svg') : [];
+        const currentTour = { ...tour, images: [...new Set(currentSourceImages.length ? currentSourceImages : previousSourceImages.length ? previousSourceImages : ['/images/tour-placeholder.svg'])] };
         return { id: tour.id, data: currentTour, updated_at: tour.syncedAt, last_seen_at: tour.syncedAt,
           sync_status: 'active', normalized_key: tour.dedupeKey };
       });
       const { error } = await db.from('app_tours').upsert(rows); if (error) throw error;
+      const tourIds = rows.map(row => row.id);
+      const { error: deleteImagesError } = await db.from('partner_tour_images').delete().in('tour_id', tourIds);
+      if (deleteImagesError) throw deleteImagesError;
+      const imageRows = rows.flatMap(row => {
+        const tour = row.data as PartnerTour;
+        return tour.images.map((imageUrl, sortOrder) => ({ tour_id: tour.id, source: tour.partnerSource,
+          external_tour_id: tour.externalOfferId, image_url: imageUrl, is_main: sortOrder === 0, sort_order: sortOrder, active: true }));
+      });
+      if (imageRows.length) { const { error: imageError } = await db.from('partner_tour_images').insert(imageRows); if (imageError) throw imageError; }
     }
     for (let index = 0; index < priceChanges.length; index += 500) {
       const { error } = await db.from('partner_price_history').insert(priceChanges.slice(index, index + 500));

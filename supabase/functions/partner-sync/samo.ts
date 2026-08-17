@@ -1,4 +1,4 @@
-import { cleanText, stableId, uniqueFallbackImage, type PartnerTour, type SyncResult } from './types.ts';
+import { cleanText, fallbackImage, stableId, type PartnerTour, type SyncResult } from './types.ts';
 
 type Source = { name: string; base: string; currency: string; currencyCode: 'KZT' | 'USD'; dateWindow: number; nightsTill: string };
 const sources: Source[] = [
@@ -52,7 +52,7 @@ async function parseRows(source: Source, html: string, departureCity: string, co
     const wordCategory = Object.entries(categoryWords).find(([word]) => hotel.toLowerCase().replace(/\s+/g, '').includes(word))?.[1];
     const rating = Number(hotel.match(/([1-5])\s*[★*]\s*(?:\([^)]*\))?$/)?.[1] ?? wordCategory ?? 0);
     return { id, hotel, country, resort: location, departureCity, dates: date, nights, meal, price, rating, reviews: 0, popularity: 80, isHot: true,
-      images: [uniqueFallbackImage(id)],
+      images: [fallbackImage],
       description: `${hotel} — пакетный тур в ${location}, ${country}. Вылет из города ${departureCity}. Программа: ${tourProgram}. Размещение: ${room}. Питание: ${meal}. Перелёт: ${transport}. ${availability}.`,
       included: [`Перелёт: ${transport}`, `Проживание: ${room}`, `Питание: ${meal}`, availability], room, tourProgram, availability, sourcePrice, sourceCurrency: source.currencyCode,
       partnerSource: source.name, externalOfferId: offerKey, sourceHotelId: attr('hotel'), sourceUrl: hotelSourceUrl, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
