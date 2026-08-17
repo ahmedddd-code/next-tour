@@ -12,7 +12,7 @@ const fields = [
   { label: 'Бюджет', value: 'до 2 500 000 ₸', icon: WalletCards, type: 'text' },
 ];
 
-export function TourSearch() {
+export function TourSearch({ standalone = false }: { standalone?: boolean }) {
   const { tours } = useTours();
   const navigate = useNavigate();
   const { city } = useDepartureCity();
@@ -25,7 +25,7 @@ export function TourSearch() {
     navigate(`/tours${params.size ? `?${params}` : ''}`);
   }
   return (
-    <div id="search" className="section-shell relative z-20 -mt-24 scroll-mt-24">
+    <div id="search" className={`section-shell relative z-20 scroll-mt-24 ${standalone ? 'py-6 sm:py-8' : '-mt-24'}`}>
       <form onSubmit={submit} className="rounded-[28px] bg-white p-4 shadow-[0_25px_70px_rgba(7,29,52,.16)] md:p-6">
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-[1.05fr_1.1fr_.9fr_.9fr_1fr_auto]">
           <DepartureCitySelector variant="search" className="w-full"/>
