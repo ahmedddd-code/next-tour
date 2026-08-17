@@ -42,6 +42,7 @@ export function Header() {
       </div>
       {open && <nav id="mobile-navigation" className="section-shell mb-3 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-y-auto overscroll-contain rounded-2xl bg-white p-3 shadow-2xl xl:hidden">
         <DepartureCitySelector className="mb-2 w-full"/>
+        <Link to="/" onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">Главная</Link>
         <Link to="/tours" onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">Туры</Link>
         {sectionLinks.map(([label, section]) => <SectionLink key={section} section={section} onNavigate={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">{label}</SectionLink>)}
         <div className="mt-2 border-t border-slate-100 pt-3">{user ? <UserMenu/> : <button onClick={() => { setOpen(false); openAuth('login'); }} className="w-full rounded-xl bg-navy px-4 py-3 text-left font-black text-white">Войти в аккаунт</button>}</div>
