@@ -2,10 +2,26 @@ import { fallbackImage, included, stableId, type PartnerTour, type SyncResult } 
 
 type Promotion = {
   id: string; hotelName: string; hotelImageUrl?: string; hotelRating?: number; hotelCategoryName?: string;
+  hotelImages?: unknown; images?: unknown; imageUrls?: unknown; photos?: unknown; gallery?: unknown;
   currentPrice: number; oldPrice?: number; startDate: string; endDate: string; stayingDuration?: string;
   constructBookingUrl?: string; hotelDescriptionUrl?: string;
   hotelCountryId?: number; hotelLocationId?: number; currencyId?: number; adults?: number; child?: number;
 };
+
+function promotionImages(offer: Promotion) {
+  const found: string[] = [];
+  const collect = (value: unknown): void => {
+    if (typeof value === 'string') {
+      if (/^https?:\/\//i.test(value) && /\.(?:jpe?g|png|webp)(?:\?|$)/i.test(value)) found.push(value);
+      return;
+    }
+    if (Array.isArray(value)) { value.forEach(collect); return; }
+    if (value && typeof value === 'object') Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => /image|photo|url|src/i.test(key)).forEach(([, child]) => collect(child));
+  };
+  [offer.hotelImageUrl, offer.hotelImages, offer.images, offer.imageUrls, offer.photos, offer.gallery].forEach(collect);
+  return [...new Set(found)];
+}
 
 type PromotionResponse = {
   packageTourPromotions?: Promotion[];
@@ -38,9 +54,10 @@ export async function syncPegas(): Promise<SyncResult> {
       const country = countries.get(Number(offer.hotelCountryId)) ?? 'Зарубежный тур';
       const resort = locations.get(Number(offer.hotelLocationId)) ?? country;
       const sourceCurrency = currencies.get(Number(offer.currencyId)) ?? 'KZT';
+      const images = promotionImages(offer);
       return { id, hotel: `${offer.hotelName}${offer.hotelCategoryName ? ` ${offer.hotelCategoryName}` : ''}`, country, resort, departureCity,
         dates: start.toLocaleDateString('ru-RU'), nights, meal: 'По программе', price: Math.round(offer.currentPrice), oldPrice: offer.oldPrice ? Math.round(offer.oldPrice) : undefined,
-        rating: offer.hotelRating || Number(offer.hotelCategoryName?.match(/[1-5]/)?.[0]) || 0, reviews: 0, popularity: 85, isHot: true, images: [offer.hotelImageUrl || fallbackImage],
+        rating: offer.hotelRating || Number(offer.hotelCategoryName?.match(/[1-5]/)?.[0]) || 0, reviews: 0, popularity: 85, isHot: true, images: images.length ? images : [fallbackImage],
         description: `${offer.hotelName} — пакетный тур в ${resort}, ${country}. Вылет из города ${departureCity}, даты поездки ${start.toLocaleDateString('ru-RU')}–${end.toLocaleDateString('ru-RU')}, продолжительность ${nights} ночей. Размещение рассчитано для ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}.`,
         included: ['Перелёт по программе тура', `Проживание: ${nights} ночей`, `Размещение: ${offer.adults ?? 2} взрослых${offer.child ? ` и ${offer.child} детей` : ''}`],
         availability: 'Доступно к бронированию', sourcePrice: Math.round(offer.currentPrice), sourceCurrency, partnerSource: source, externalOfferId,

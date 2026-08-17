@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Edit3, Eye, EyeOff, Flame, Images, RefreshCw, TriangleAlert, Trash2 } from 'lucide-react';
+import { useMemo } from 'react';
+import { Edit3, Eye, EyeOff, Flame, Images, TriangleAlert, Trash2 } from 'lucide-react';
 import { formatPrice, type Tour } from '../data/tours';
 import { optimizedImageUrl, showTourImageFallback } from '../utils/image';
 import { withUniqueTourCovers } from '../utils/tourImages';
@@ -9,21 +9,12 @@ type Props = {
   onEdit: (tour: Tour) => void;
   onToggleHidden: (tour: Tour) => void;
   onRemove: (tour: Tour) => void;
-  onResyncPhotos: (id: string) => Promise<void>;
 };
 
 const fallbackPattern = /tour-placeholder\.svg|picsum\.photos|photo-1500530855697-b586d89ba3ee/i;
 
-export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove, onResyncPhotos }: Props) {
-  const [syncingId, setSyncingId] = useState<string | null>(null);
+export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove }: Props) {
   const previews = useMemo(() => new Map(withUniqueTourCovers(tours).map(tour => [tour.id, tour.coverImage ?? tour.images[0]])), [tours]);
-
-  async function resyncPhotos(tour: Tour) {
-    setSyncingId(tour.id);
-    try { await onResyncPhotos(tour.id); }
-    catch (error) { window.alert(error instanceof Error ? error.message : 'Не удалось обновить фотографии'); }
-    finally { setSyncingId(null); }
-  }
 
   return <div className="space-y-3">{tours.map(tour => {
     const sourceImages = [...new Set(tour.images.filter(Boolean))];
@@ -52,7 +43,6 @@ export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove, onResyn
         <p className="mt-2 font-black text-brand-dark">{formatPrice(tour.price)}</p>
       </div>
       <div className="flex flex-wrap gap-2 sm:w-48 sm:justify-end">
-        {tour.partnerSource && <button disabled={syncingId === tour.id} onClick={() => void resyncPhotos(tour)} className="flex min-w-full items-center justify-center gap-2 rounded-xl bg-brand/10 px-3 py-2.5 text-[11px] font-extrabold text-brand-dark hover:bg-brand/20 disabled:opacity-60"><RefreshCw className={`size-4 shrink-0 ${syncingId === tour.id ? 'animate-spin' : ''}`}/>{syncingId === tour.id ? 'Обновляем…' : 'Пересинхронизировать фотографии'}</button>}
         <button onClick={() => onEdit(tour)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-mist px-3 py-2.5 text-xs font-extrabold text-brand-dark hover:bg-brand/15"><Edit3 className="size-4"/>Изменить</button>
         <button onClick={() => onToggleHidden(tour)} className={`grid size-11 shrink-0 place-items-center rounded-xl ${tour.isHidden ? 'bg-brand/10 text-brand-dark hover:bg-brand/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`} aria-label={`${tour.isHidden ? 'Показать' : 'Скрыть'} ${tour.hotel}`}>{tour.isHidden ? <Eye className="size-4"/> : <EyeOff className="size-4"/>}</button>
         <button onClick={() => onRemove(tour)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100" aria-label={`Удалить ${tour.hotel}`}><Trash2 className="size-4"/></button>

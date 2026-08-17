@@ -59,7 +59,7 @@ Deno.serve(async request => {
         const samePhotoOwner = previous?.partnerSource === tour.partnerSource && previous.externalOfferId === tour.externalOfferId;
         const currentSourceImages = tour.images.filter(image => image !== '/images/tour-placeholder.svg');
         const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(image => image !== '/images/tour-placeholder.svg') : [];
-        const currentTour = { ...tour, images: [...new Set(currentSourceImages.length ? currentSourceImages : previousSourceImages.length ? previousSourceImages : ['/images/tour-placeholder.svg'])] };
+        const currentTour = { ...tour, images: [...new Set(previousSourceImages.length ? previousSourceImages : currentSourceImages.length ? currentSourceImages : ['/images/tour-placeholder.svg'])] };
         return { id: tour.id, data: currentTour, updated_at: tour.syncedAt, last_seen_at: tour.syncedAt,
           sync_status: 'active', normalized_key: tour.dedupeKey };
       });

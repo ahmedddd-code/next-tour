@@ -8,6 +8,13 @@ const sources: Source[] = [
 ];
 const headers = { 'User-Agent': 'NextTour catalog sync/1.0', Accept: 'text/html,application/javascript' };
 
+function offerImages(source: Source, markup: string) {
+  const base = source.name === 'kompas' ? 'https://kompastour.com/' : new URL(source.base).origin;
+  return [...new Set([...markup.matchAll(/(?:src|data-src|href)=["']([^"']+\.(?:jpe?g|png|webp)(?:\?[^"']*)?)["']/gi)].map(match => {
+    try { return new URL(match[1].replaceAll('\\/', '/'), base).href; } catch { return ''; }
+  }).filter(image => image && !/logo|icon|flag|banner|loader|sprite/i.test(image)))];
+}
+
 function options(html: string, name: string) {
   const block = html.match(new RegExp(`<select[^>]*name=["']${name}["'][^>]*>([\\s\\S]*?)<\\/select>`, 'i'))?.[1] ?? '';
   return [...block.matchAll(/<option[^>]*value=["']?([^"' >]+)["']?[^>]*>([\s\S]*?)<\/option>/gi)].map(match => ({ id: match[1], name: cleanText(match[2]) })).filter(item => item.id !== '0');
@@ -51,8 +58,9 @@ async function parseRows(source: Source, html: string, departureCity: string, co
     const categoryWords: Record<string, number> = { onestar: 1, twostar: 2, threestar: 3, fourstar: 4, fivestar: 5 };
     const wordCategory = Object.entries(categoryWords).find(([word]) => hotel.toLowerCase().replace(/\s+/g, '').includes(word))?.[1];
     const rating = Number(hotel.match(/([1-5])\s*[★*]\s*(?:\([^)]*\))?$/)?.[1] ?? wordCategory ?? 0);
+    const images = offerImages(source, row);
     return { id, hotel, country, resort: location, departureCity, dates: date, nights, meal, price, rating, reviews: 0, popularity: 80, isHot: true,
-      images: [fallbackImage],
+      images: images.length ? images : [fallbackImage],
       description: `${hotel} — пакетный тур в ${location}, ${country}. Вылет из города ${departureCity}. Программа: ${tourProgram}. Размещение: ${room}. Питание: ${meal}. Перелёт: ${transport}. ${availability}.`,
       included: [`Перелёт: ${transport}`, `Проживание: ${room}`, `Питание: ${meal}`, availability], room, tourProgram, availability, sourcePrice, sourceCurrency: source.currencyCode,
       partnerSource: source.name, externalOfferId: offerKey, sourceHotelId: attr('hotel'), sourceUrl: hotelSourceUrl, syncedAt: now, priceCheckedAt: now } satisfies PartnerTour;
