@@ -1,21 +1,27 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { ScrollManager } from './components/ScrollManager';
-import { FloatingSupportWidget } from './components/FloatingSupportWidget';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
-import { useAuth } from './hooks/useAuth';
+import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { ScreamerShortcut } from './components/ScreamerShortcut';
+import { ScrollManager } from './components/ScrollManager';
+import { useAuth } from './hooks/useAuth';
 
-const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })));
-const ToursPage = lazy(() => import('./pages/ToursPage').then(module => ({ default: module.ToursPage })));
-const TourPage = lazy(() => import('./pages/TourPage').then(module => ({ default: module.TourPage })));
-const ChatPage = lazy(() => import('./pages/ChatPage').then(module => ({ default: module.ChatPage })));
-const AdminPage = lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
-const AccountPage = lazy(() => import('./pages/AccountPage').then(module => ({ default: module.AccountPage })));
-const AuthModal = lazy(() => import('./components/AuthModal').then(module => ({ default: module.AuthModal })));
-const ScreamerPage = lazy(() => import('./pages/ScreamerPage').then(module => ({ default: module.ScreamerPage })));
-const GamePage = lazy(() => import('./pages/GamePage').then(module => ({ default: module.GamePage })));
+const page = <T extends object>(loader: () => Promise<T>, name: keyof T) => lazy(async () => ({ default: (await loader())[name] as React.ComponentType }));
+const HomePage = page(() => import('./pages/HomePage'), 'HomePage');
+const ToursPage = page(() => import('./pages/ToursPage'), 'ToursPage');
+const TourPage = page(() => import('./pages/TourPage'), 'TourPage');
+const SearchPage = page(() => import('./pages/SearchPage'), 'SearchPage');
+const DestinationsPage = page(() => import('./pages/DestinationsPage'), 'DestinationsPage');
+const AiPage = page(() => import('./pages/AiPage'), 'AiPage');
+const ReviewsPage = page(() => import('./pages/ReviewsPage'), 'ReviewsPage');
+const ContactsPage = page(() => import('./pages/ContactsPage'), 'ContactsPage');
+const ChatPage = page(() => import('./pages/ChatPage'), 'ChatPage');
+const AccountPage = page(() => import('./pages/AccountPage'), 'AccountPage');
+const AdminPage = page(() => import('./pages/AdminPage'), 'AdminPage');
+const ScreamerPage = page(() => import('./pages/ScreamerPage'), 'ScreamerPage');
+const GamePage = page(() => import('./pages/GamePage'), 'GamePage');
+const NotFoundPage = page(() => import('./pages/NotFoundPage'), 'NotFoundPage');
+const AuthModal = page(() => import('./components/AuthModal'), 'AuthModal');
 
 function PageLoader() {
   return <div className="grid min-h-screen place-items-center bg-mist"><span className="size-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand" aria-label="Загрузка страницы"/></div>;
@@ -29,10 +35,13 @@ function AuthExperience() {
 function PublicOverlays() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/admin') || pathname === '/screamer' || pathname === '/game') return null;
-  const travelPage = pathname === '/' || pathname === '/tours' || pathname.startsWith('/tour/');
+  const travelPage = ['/', '/tours', '/search', '/destinations'].includes(pathname) || pathname.startsWith('/tour/');
   return <>{travelPage && <DepartureCityDialogs/>}{pathname !== '/chat' && <FloatingSupportWidget/>}</>;
 }
 
 export default function App() {
-  return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes><Route path="/" element={<HomePage/>}/><Route path="/search" element={<Navigate to="/" replace state={{ scrollTo: 'search' }}/>}/><Route path="/ai" element={<Navigate to="/" replace state={{ scrollTo: 'ai' }}/>}/><Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="/game" element={<GamePage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></Suspense><PublicOverlays/><AuthExperience/></>;
+  return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes>
+    <Route path="/" element={<HomePage/>}/><Route path="/search" element={<SearchPage/>}/><Route path="/destinations" element={<DestinationsPage/>}/><Route path="/ai" element={<AiPage/>}/><Route path="/reviews" element={<ReviewsPage/>}/><Route path="/contacts" element={<ContactsPage/>}/>
+    <Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="/game" element={<GamePage/>}/><Route path="*" element={<NotFoundPage/>}/>
+  </Routes></Suspense><PublicOverlays/><AuthExperience/></>;
 }

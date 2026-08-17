@@ -7,7 +7,7 @@ import { TourCard } from './TourCard';
 import { cityInGenitive } from '../data/kazakhstanCities';
 import { optimizedImageSrcSet, optimizedImageUrl } from '../utils/image';
 
-const destinations = [
+export const destinations = [
   { name: 'Мальдивы', meta: 'Белый песок и тишина', image: defaultTours[0].images[0], span: 'md:col-span-2 md:row-span-2' },
   { name: 'Бали', meta: 'Остров вдохновения', image: defaultTours[4].images[0], span: '' },
   { name: 'Дубай', meta: 'Город будущего', image: defaultTours[3].images[0], span: '' },
