@@ -1,6 +1,6 @@
 import { Menu, Phone, X } from 'lucide-react';
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Logo } from './Logo';
 import { DepartureCitySelector } from './DepartureCitySelector';
 import { useAuth } from '../hooks/useAuth';
@@ -11,26 +11,36 @@ const sectionLinks = [['Направления', 'destinations'], ['AI-помо�
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
   const { user, loading, openAuth } = useAuth();
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [open]);
+
   return (
-    <header className="absolute inset-x-0 top-0 z-30 border-b border-white/15 bg-navy/10 backdrop-blur-sm">
+    <header className={`${open ? 'fixed bg-navy shadow-2xl' : 'absolute bg-navy/10'} inset-x-0 top-0 z-[100] border-b border-white/15 backdrop-blur-md`}>
       <div className="section-shell flex h-18 items-center justify-between gap-3 sm:h-20 sm:gap-4 2xl:h-24">
         <Logo light />
         <nav className="hidden items-center gap-5 xl:flex 2xl:gap-7">
           <Link to="/tours" className="text-sm font-semibold text-white/85 transition hover:text-white">Туры</Link>
           {sectionLinks.map(([label, section]) => <SectionLink key={section} section={section} className="text-sm font-semibold text-white/85 transition hover:text-white">{label}</SectionLink>)}
         </nav>
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 xl:flex">
           <DepartureCitySelector variant="header" className="py-2"/>
           <a href="tel:+77071819912" className="hidden items-center gap-2 text-sm font-bold text-white 2xl:flex"><Phone className="size-4" />+7 (707) 181-99-12</a>
           {!loading && (user ? <UserMenu light/> : <button onClick={() => openAuth('login')} className="rounded-full border border-white/25 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-white/10">Войти</button>)}
           <Link to="/tours" className="rounded-full bg-brand px-5 py-3 text-sm font-extrabold text-white transition hover:bg-brand-dark">Найти тур</Link>
         </div>
-        <button onClick={() => setOpen(!open)} className="grid size-11 shrink-0 place-items-center rounded-full bg-white/15 text-white xl:hidden" aria-label="Открыть меню">
+        <button onClick={() => setOpen(value => !value)} className="grid size-11 shrink-0 place-items-center rounded-full bg-white/15 text-white transition active:scale-95 xl:hidden" aria-label={open ? 'Закрыть меню' : 'Открыть меню'} aria-expanded={open} aria-controls="mobile-navigation">
           {open ? <X /> : <Menu />}
         </button>
       </div>
-      {open && <nav className="section-shell mb-4 max-h-[calc(100dvh-5.5rem)] overflow-y-auto rounded-2xl bg-white p-3 shadow-2xl xl:hidden">
+      {open && <nav id="mobile-navigation" className="section-shell mb-3 flex max-h-[calc(100dvh-5.5rem)] flex-col overflow-y-auto overscroll-contain rounded-2xl bg-white p-3 shadow-2xl xl:hidden">
         <DepartureCitySelector className="mb-2 w-full"/>
         <Link to="/tours" onClick={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">Туры</Link>
         {sectionLinks.map(([label, section]) => <SectionLink key={section} section={section} onNavigate={() => setOpen(false)} className="rounded-xl px-4 py-3 font-bold text-navy hover:bg-mist">{label}</SectionLink>)}

@@ -1,7 +1,7 @@
 import { Header } from './Header';
 
 export function PageHeader({ title, eyebrow }: { title: string; eyebrow: string }) {
-  return <div className="relative min-h-56 overflow-hidden bg-navy text-white sm:min-h-64">
+  return <div className="relative min-h-56 bg-navy text-white sm:min-h-64">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(0,200,83,.28),transparent_38%)]"/>
     <Header/>
     <div className="section-shell relative flex min-h-56 flex-col justify-end pb-8 pt-24 sm:min-h-64 sm:pb-10">
