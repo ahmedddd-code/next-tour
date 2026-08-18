@@ -8,12 +8,16 @@ const sourceConfigs: Record<string, { base: string; route: string }> = {
 };
 const cache = new Map<string, Promise<string[]>>();
 
+export function isOperatorPhoto(image: string) {
+  return Boolean(image) && !/logo|icon|flag|banner|hotelparam|loader|sprite|placeholder|no[-_]?photo|\/data\/search_tour\/prt_\d+_\d+\.png|\/www\.(?:jpe?g|webp|png)\//i.test(image);
+}
+
 export function extractOperatorImages(text: string, base: string) {
   const decoded = text.replaceAll('\\u0026quot;', '"').replaceAll('\\u0026amp;', '&')
     .replaceAll('\\/', '/').replaceAll('&quot;', '"').replaceAll('&amp;', '&');
   return [...new Set([...decoded.matchAll(/((?:https?:)?\/\/[^"')\s<>]+\.(?:jpe?g|webp|png)(?:\?[^"')\s<>]*)?|\/[^"')\s<>]+\.(?:jpe?g|webp|png)(?:\?[^"')\s<>]*)?)/gi)].map(match => {
     try { return new URL(match[1], base).href; } catch { return ''; }
-  }).filter(image => image && !/logo|icon|flag|banner|hotelparam|loader|sprite|placeholder|no[-_]?photo|\/data\/search_tour\/prt_\d+_\d+\.png|\/www\.(?:jpe?g|webp|png)\//i.test(image)))];
+  }).filter(isOperatorPhoto))];
 }
 
 function originalPegasImage(image: string) {

@@ -3,7 +3,7 @@ import { syncSamoSources } from './samo.ts';
 import { syncPegas } from './pegas.ts';
 import type { PartnerTour, SyncResult } from './types.ts';
 import { mergeDuplicateTours } from './dedupe.ts';
-import { getOperatorGallery, mapWithConcurrency } from './photos.ts';
+import { getOperatorGallery, isOperatorPhoto, mapWithConcurrency } from './photos.ts';
 
 const url = Deno.env.get('SUPABASE_URL');
 const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -51,8 +51,8 @@ Deno.serve(async request => {
       const preparedTours = await mapWithConcurrency(tours.slice(index, index + 200), 12, async tour => {
         const previous = previousByKey.get(tour.dedupeKey ?? '')?.data as PartnerTour | undefined;
         const samePhotoOwner = previous?.partnerSource === tour.partnerSource && previous.externalOfferId === tour.externalOfferId;
-        const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(image => image !== '/images/tour-placeholder.svg') : [];
-        const currentSourceImages = tour.images.filter(image => image !== '/images/tour-placeholder.svg');
+        const previousSourceImages = samePhotoOwner ? (previous?.images ?? []).filter(isOperatorPhoto) : [];
+        const currentSourceImages = tour.images.filter(isOperatorPhoto);
         const lastImport = previous?.operatorImagesImportedAt ? new Date(previous.operatorImagesImportedAt).getTime() : 0;
         const sourcePageChanged = previous?.sourceUrl !== tour.sourceUrl;
         const galleryIsStale = Date.now() - lastImport >= 24 * 60 * 60 * 1000;
@@ -64,7 +64,7 @@ Deno.serve(async request => {
         if (!images.length) console.warn(`[SYNC] WARNING: Images not found for tour ${tour.externalOfferId}; using placeholder`);
         return { tour, previous, images, importedAt: shouldRefreshGallery ? new Date().toISOString() : previous?.operatorImagesImportedAt ?? new Date().toISOString() };
       });
-      const rows = preparedTours.map(({ tour, previous, images, importedAt }) => {
+      const rows = preparedTours.filter(item => item.images.length > 0).map(({ tour, previous, images, importedAt }) => {
         const oldOffers = new Map((previous?.partnerOffers ?? []).map(offer => [offer.source, offer]));
         for (const offer of tour.partnerOffers ?? []) {
           const old = oldOffers.get(offer.source);
@@ -72,7 +72,7 @@ Deno.serve(async request => {
             partner_source: offer.source, external_offer_id: offer.externalOfferId, old_price: old.price,
             new_price: offer.price, currency: offer.currency, changed_at: tour.priceCheckedAt });
         }
-        const currentTour = { ...tour, images: images.length ? images : ['/images/tour-placeholder.svg'],
+        const currentTour = { ...tour, images,
           operatorImagesImportedAt: importedAt, operatorImageCount: images.length };
         return { id: tour.id, data: currentTour, updated_at: tour.syncedAt, last_seen_at: tour.syncedAt,
           sync_status: 'active', normalized_key: tour.dedupeKey };
