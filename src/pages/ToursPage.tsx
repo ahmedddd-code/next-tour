@@ -5,6 +5,7 @@ import { CatalogFilters, filterAndSortTours, type SortOption, type TourFilters }
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
 import { TourCard } from '../components/TourCard';
+import { TourComparison } from '../components/TourComparison';
 import { useTours } from '../hooks/useTours';
 import { useDepartureCity } from '../hooks/useDepartureCity';
 import { cityInGenitive } from '../data/kazakhstanCities';
@@ -15,7 +16,7 @@ export function ToursPage() {
   const [searchParams] = useSearchParams();
   const maxPrice = useMemo(() => Math.max(500000, Math.ceil(Math.max(0, ...tours.map(tour => tour.price)) / 50000) * 50000), [tours]);
   const countries = useMemo(() => [...new Set(tours.map(tour => tour.country))], [tours]);
-  const [filters, setFilters] = useState<TourFilters>({ query: searchParams.get('query') ?? '', country: '', maxPrice, nights: '', sort: 'popularity' });
+  const [filters, setFilters] = useState<TourFilters>({ query: searchParams.get('query') ?? '', country: '', departure: searchParams.get('departure') ?? '', date: searchParams.get('date') ?? '', tourists: Number(searchParams.get('tourists')) || 2, maxPrice: Number(searchParams.get('budget')) || maxPrice, nights: '', sort: 'popularity' });
   const previousMaxPrice = useRef(maxPrice);
   useEffect(() => {
     setFilters(current => current.maxPrice === previousMaxPrice.current ? { ...current, maxPrice } : current);
@@ -30,6 +31,7 @@ export function ToursPage() {
     <div className="section-shell grid gap-7 py-10 sm:py-12 lg:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[290px_minmax(0,1fr)] 2xl:gap-9">
       <CatalogFilters filters={filters} countries={countries} maxAvailablePrice={maxPrice} resultCount={filteredTours.length} onChange={setFilters}/>
       <section>
+        <TourComparison tours={tours}/>
         <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
           <strong>Показываем туры из всех городов.</strong>
           <span className="ml-1">Из {cityInGenitive(city)} доступно {cityTours.length}, остальные варианты также остаются в каталоге.</span>

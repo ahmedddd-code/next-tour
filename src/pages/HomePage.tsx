@@ -4,6 +4,7 @@ import { Hero } from '../components/Hero';
 import { Reviews } from '../components/Reviews';
 import { TourSearch } from '../components/TourSearch';
 import { TourSections } from '../components/TourSections';
+import { TrustSection } from '../components/TrustSection';
 import { ReviewsProvider } from '../hooks/useReviews';
 
 export function HomePage() {
@@ -16,6 +17,7 @@ function HomeContent() {
       <Hero />
       <TourSearch />
       <TourSections />
+      <TrustSection />
       <AiAssistant />
       <Reviews />
       <Footer />

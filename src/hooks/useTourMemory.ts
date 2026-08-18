@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 type Favorite = { id: string; savedPrice: number };
 const FAVORITES_KEY = 'nexttour:favorites:v1';
 const RECENT_KEY = 'nexttour:recent:v1';
+const COMPARE_KEY = 'nexttour:compare:v1';
 const CHANGE_EVENT = 'nexttour:memory-change';
 
 function read<T>(key: string, fallback: T): T {
@@ -41,4 +42,21 @@ export function useRecentlyViewed() {
     write(RECENT_KEY, [id, ...current.filter(item => item !== id)].slice(0, 6));
   }, []);
   return { recentIds, rememberTour };
+}
+
+export function useCompare() {
+  const [compareIds, setCompareIds] = useState<string[]>(() => read(COMPARE_KEY, []));
+  useEffect(() => {
+    const refresh = () => setCompareIds(read(COMPARE_KEY, []));
+    window.addEventListener(CHANGE_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => { window.removeEventListener(CHANGE_EVENT, refresh); window.removeEventListener('storage', refresh); };
+  }, []);
+  const toggleCompare = useCallback((id: string) => {
+    const current = read<string[]>(COMPARE_KEY, []);
+    if (current.includes(id)) write(COMPARE_KEY, current.filter(item => item !== id));
+    else if (current.length < 3) write(COMPARE_KEY, [...current, id]);
+  }, []);
+  const clearCompare = useCallback(() => write(COMPARE_KEY, []), []);
+  return { compareIds, toggleCompare, clearCompare, isCompared: (id: string) => compareIds.includes(id), isFull: compareIds.length >= 3 };
 }

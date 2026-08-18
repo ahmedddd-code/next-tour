@@ -1,9 +1,9 @@
-import { CalendarDays, Flame, Heart, MapPin, Plane, Star } from 'lucide-react';
+import { CalendarDays, Flame, Heart, MapPin, Plane, Scale, Star } from 'lucide-react';
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPrice, type Tour } from '../data/tours';
 import { optimizedImageSrcSet, optimizedImageUrl, showTourImageFallback } from '../utils/image';
-import { useFavorites } from '../hooks/useTourMemory';
+import { useCompare, useFavorites } from '../hooks/useTourMemory';
 
 type Props = { tour: Tour };
 
@@ -11,6 +11,8 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
   const coverImage = tour.coverImage ?? tour.images[0];
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorite = isFavorite(tour.id);
+  const { isCompared, isFull, toggleCompare } = useCompare();
+  const compared = isCompared(tour.id);
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-[0_14px_45px_rgba(7,29,52,.08)] transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_24px_60px_rgba(7,29,52,.15)]">
       <Link to={`/tour/${tour.id}`} className="relative block h-56 overflow-hidden sm:h-64 2xl:h-72">
@@ -32,7 +34,8 @@ export const TourCard = memo(function TourCard({ tour }: Props) {
         <div className="mt-5 flex items-end justify-between border-t border-slate-100 pt-4">
           <div>{tour.oldPrice && <p className="text-xs text-slate-400 line-through">{formatPrice(tour.oldPrice)}</p>}<p className="text-2xl font-black text-navy">{formatPrice(tour.price)}</p><p className="text-[11px] text-slate-400">за двоих · {tour.nights} ночей{tour.partnerOffers && tour.partnerOffers.length > 1 ? ` · ${tour.partnerOffers.length} оператора` : ''}</p></div>
         </div>
-        <div className="mt-5 grid gap-2">
+        <button type="button" disabled={!compared && isFull} onClick={() => toggleCompare(tour.id)} className={`mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold transition ${compared ? 'bg-blue-100 text-blue-700' : 'bg-mist text-slate-500 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-45'}`}><Scale className="size-4"/>{compared ? 'В сравнении' : isFull ? 'Можно сравнить до 3' : 'Добавить к сравнению'}</button>
+        <div className="mt-2 grid gap-2">
           <Link to={`/tour/${tour.id}`} className="flex items-center justify-center rounded-2xl border border-brand/25 px-5 py-3 text-sm font-extrabold text-brand-dark transition hover:bg-brand/5">Подробнее</Link>
           <Link to={`/tour/${tour.id}`} className="flex items-center justify-center rounded-2xl bg-brand px-5 py-3.5 text-sm font-extrabold text-white transition hover:bg-brand-dark">Забронировать в Next Tour</Link>
         </div>

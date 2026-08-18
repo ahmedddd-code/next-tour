@@ -7,6 +7,8 @@ import { Header } from '../components/Header';
 import { TourCard } from '../components/TourCard';
 import { TourGallery } from '../components/TourGallery';
 import { TourInquiryForm } from '../components/TourInquiryForm';
+import { TourPriceBreakdown } from '../components/TourPriceBreakdown';
+import { TourPriceCalendar } from '../components/TourPriceCalendar';
 import { formatPrice } from '../data/tours';
 import { useTours } from '../hooks/useTours';
 import { BookingsProvider } from '../hooks/useBookings';
@@ -39,6 +41,8 @@ function TourContent() {
         {tour.sourceUrl && <section className="rounded-3xl border border-blue-100 bg-blue-50 p-6 sm:p-8"><h2 className="text-lg font-black text-navy">Проверка цены</h2><p className="mt-2 text-sm leading-6 text-slate-600">Цена проверена {tour.priceCheckedAt ? new Date(tour.priceCheckedAt).toLocaleString('ru-RU') : 'при последнем обновлении'}.{tour.sourcePrice && tour.sourceCurrency ? ` Исходная цена: ${new Intl.NumberFormat('ru-RU').format(tour.sourcePrice)} ${tour.sourceCurrency}.` : ''}</p><a href={tour.sourceUrl} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-100">Проверить предложение у туроператора <ExternalLink className="size-4"/></a></section>}
         {tour.partnerOffers && tour.partnerOffers.length > 1 && <section className="rounded-3xl bg-white p-6 sm:p-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.16em] text-brand-dark">Сравнение операторов</p><h2 className="mt-2 text-2xl font-black">Все предложения в одной карточке</h2></div><span className="rounded-full bg-brand/10 px-3 py-1.5 text-xs font-black text-brand-dark">Лучшая цена выбрана</span></div><div className="mt-6 divide-y divide-slate-100">{tour.partnerOffers.map((offer, index) => <div key={`${offer.source}:${offer.externalOfferId}`} className="flex items-center justify-between gap-4 py-4"><div><p className="font-black capitalize text-navy">{offer.source}</p><p className="mt-1 text-xs text-slate-400">{offer.availability}</p></div><div className="text-right"><p className="text-lg font-black text-navy">{formatPrice(offer.price)}</p>{index === 0 && <span className="text-xs font-black text-brand-dark">Лучшая цена</span>}</div></div>)}</div></section>}
         <section className="rounded-3xl bg-white p-6 sm:p-8"><h2 className="text-2xl font-black">Что входит в стоимость</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{tour.included.map(item => <p key={item} className="flex items-center gap-3 text-sm font-semibold text-slate-600"><span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand/10"><Check className="size-4 text-brand-dark"/></span>{item}</p>)}</div></section>
+        <TourPriceBreakdown tour={tour}/>
+        <TourPriceCalendar tour={tour} tours={allTours}/>
       </div><TourInquiryForm tour={tour}/></div>
       {similar.length > 0 && <section className="pt-20"><p className="text-xs font-black uppercase tracking-[.2em] text-brand-dark">Вам может понравиться</p><h2 className="mt-3 text-3xl font-black tracking-[-.035em]">Похожие туры</h2><div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">{similar.map(item => <TourCard key={item.id} tour={item}/>)}</div></section>}
     </div><Footer/>
