@@ -10,28 +10,30 @@ function monthValue(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-const currentMonth = monthValue(new Date());
-const quickMonths = Array.from({ length: 4 }, (_, index) => {
+const availableMonths = Array.from({ length: 36 }, (_, index) => {
   const date = new Date();
   date.setDate(1);
   date.setMonth(date.getMonth() + index);
   return {
     value: monthValue(date),
-    label: new Intl.DateTimeFormat('ru-RU', { month: 'short' }).format(date).replace('.', ''),
+    label: new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' }).format(date),
+    shortLabel: new Intl.DateTimeFormat('ru-RU', { month: 'short' }).format(date).replace('.', ''),
   };
 });
+const quickMonths = availableMonths.slice(0, 4);
 
 export function TripMonthPicker({ value, onChange, compact = false }: Props) {
   const input = <div className="relative mt-1">
     <CalendarDays className="pointer-events-none absolute left-0 top-1/2 size-4 -translate-y-1/2 text-brand-dark"/>
-    <input
-      type="month"
-      min={currentMonth}
+    <select
       value={value}
       onChange={event => onChange(event.target.value)}
       aria-label="Месяц поездки"
-      className="w-full bg-transparent pl-6 text-sm font-bold text-navy outline-none"
-    />
+      className="w-full cursor-pointer bg-transparent pl-6 text-sm font-bold capitalize text-navy outline-none"
+    >
+      <option value="">Любой месяц</option>
+      {availableMonths.map(month => <option key={month.value} value={month.value}>{month.label}</option>)}
+    </select>
   </div>;
 
   if (compact) return <label className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -50,7 +52,7 @@ export function TripMonthPicker({ value, onChange, compact = false }: Props) {
         type="button"
         onClick={() => onChange(month.value)}
         className={`rounded-lg px-1 py-2 text-[11px] font-black capitalize transition ${value === month.value ? 'bg-brand text-white' : 'bg-mist text-slate-500 hover:bg-brand/15 hover:text-brand-dark'}`}
-      >{month.label}</button>)}
+      >{month.shortLabel}</button>)}
     </div>
   </div>;
 }
