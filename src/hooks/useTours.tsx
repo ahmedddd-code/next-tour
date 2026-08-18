@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { tours as defaultTours, type Tour } from '../data/tours';
-import { withUniqueTourCovers } from '../utils/tourImages';
+import { hasUsablePartnerPhotos, withUniqueTourCovers } from '../utils/tourImages';
 import { useAutoRefresh } from './useAutoRefresh';
 
 type ToursContextValue = { tours: Tour[]; allTours: Tour[]; adminTours: Tour[]; addTour: (tour: Tour) => Promise<void>; updateTour: (tour: Tour) => Promise<void>; deleteTour: (id: string) => Promise<void>; setTourHidden: (id: string, hidden: boolean) => Promise<void>; loadAdminTours: () => Promise<void>; resetTours: () => Promise<void> };
@@ -13,7 +13,7 @@ function cachedTours() {
   try {
     const value = localStorage.getItem(CACHE_KEY);
     const parsed = value ? JSON.parse(value) as unknown : null;
-    return withUniqueTourCovers(Array.isArray(parsed) && parsed.length ? parsed as Tour[] : defaultTours);
+    return withUniqueTourCovers((Array.isArray(parsed) && parsed.length ? parsed as Tour[] : defaultTours).filter(hasUsablePartnerPhotos));
   } catch { return withUniqueTourCovers(defaultTours); }
 }
 
@@ -38,7 +38,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
         const page = data.tours as Tour[];
         cloudTours.push(...page);
         if (cloudTours.length) {
-          const visibleTours = withUniqueTourCovers(cloudTours);
+          const visibleTours = withUniqueTourCovers(cloudTours.filter(hasUsablePartnerPhotos));
           setTours(visibleTours);
           cacheTours(visibleTours);
         }
@@ -49,7 +49,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
   }, []);
   const loadAdminTours = useCallback(async () => {
     const data = await invokeToursData({ action: 'admin_list_tours' }, true);
-    setAdminTours(data.tours as Tour[]);
+    setAdminTours((data.tours as Tour[]).filter(hasUsablePartnerPhotos));
   }, []);
   useAutoRefresh(load, refreshInterval);
   const reloadAll = async () => { await Promise.all([load(), loadAdminTours()]); };

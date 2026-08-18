@@ -9,6 +9,16 @@ const normalizedImage = (image: string) => {
   } catch { return image; }
 };
 
+const invalidPartnerImage = /tour-placeholder\.svg|\/data\/search_tour\/prt_\d+_\d+\.png|\b(?:logo|placeholder|no[-_]?photo|no[-_]?image|default[-_]?hotel)\b/i;
+
+export function isUsablePartnerImage(image: string) {
+  return Boolean(image) && !invalidPartnerImage.test(image);
+}
+
+export function hasUsablePartnerPhotos(tour: Tour) {
+  return !tour.partnerSource || (tour.images ?? []).some(isUsablePartnerImage);
+}
+
 const curatedGalleries: Record<string, string[]> = {
   'villa-park-maldives': [
     'https://maldives.ru/upload/resize_cache/iblock/bc5/nxv416m7su193l65dyf2itd5c4q1e5tb/1500_1000_2/2ae44ce7f1b0a1477f6d8bf2ebc5171f.jpg',
@@ -86,7 +96,7 @@ const stableFallback = (tour: Tour) => {
 export function completeTourGallery(tour: Tour) {
   const supplied = (tour.images ?? []).filter(Boolean);
   if (tour.partnerSource) {
-    const operatorImages = supplied.filter(image => !/tour-placeholder\.svg/i.test(image));
+    const operatorImages = supplied.filter(isUsablePartnerImage);
     return [...new Set(operatorImages.length ? operatorImages : stableFallback(tour))];
   }
   const curated = curatedGalleries[tour.id] ?? [];
@@ -99,7 +109,7 @@ export function completeTourGallery(tour: Tour) {
 export function withUniqueTourCovers(tours: Tour[]) {
   return tours.map(tour => {
     const usesDestinationPhoto = Boolean(tour.partnerSource)
-      && !(tour.images ?? []).some(image => image && !/tour-placeholder\.svg/i.test(image));
+      && !(tour.images ?? []).some(isUsablePartnerImage);
     const images = completeTourGallery(tour);
     return { ...tour, images, coverImage: images[0], usesDestinationPhoto };
   });

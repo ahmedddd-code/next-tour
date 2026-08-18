@@ -20,12 +20,12 @@ export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove }: Props
     const sourceImages = [...new Set(tour.images.filter(Boolean))];
     const hasFallback = sourceImages.some(image => fallbackPattern.test(image));
     const syncedAt = tour.syncedAt ? new Date(tour.syncedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
-    return <article key={tour.id} className={`flex flex-col gap-4 rounded-2xl border bg-white p-3 shadow-sm sm:flex-row sm:items-start ${tour.isHidden ? 'border-slate-200 opacity-65' : 'border-slate-100'}`}>
+    return <article key={tour.id} className={`flex flex-col gap-4 overflow-hidden rounded-2xl border bg-white p-3 shadow-sm sm:flex-row sm:items-start ${tour.isHidden ? 'border-slate-200 opacity-65' : 'border-slate-100'}`}>
       <div className="min-w-0 shrink-0 sm:w-32">
         <img src={optimizedImageUrl(previews.get(tour.id), 320)} alt={tour.hotel} onError={showTourImageFallback} className="h-32 w-full rounded-xl object-cover sm:h-24"/>
         {sourceImages.length > 1 && <div className="mt-1 flex gap-1 overflow-x-auto pb-1">{sourceImages.slice(1).map((image, index) => <img key={image} src={optimizedImageUrl(image, 96)} alt={`${tour.hotel}, фото ${index + 2}`} loading="lazy" onError={showTourImageFallback} className="h-8 w-8 shrink-0 rounded object-cover"/>)}</div>}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 sm:w-0">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="truncate font-black text-navy">{tour.hotel}</h2>
           {tour.isHot && <Flame className="size-4 shrink-0 fill-brand text-brand"/>}
@@ -42,7 +42,7 @@ export function AdminTourList({ tours, onEdit, onToggleHidden, onRemove }: Props
         </div>
         <p className="mt-2 font-black text-brand-dark">{formatPrice(tour.price)}</p>
       </div>
-      <div className="flex flex-wrap gap-2 sm:w-48 sm:justify-end">
+      <div className="flex shrink-0 flex-wrap gap-2 sm:w-48 sm:justify-end">
         <button onClick={() => onEdit(tour)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-mist px-3 py-2.5 text-xs font-extrabold text-brand-dark hover:bg-brand/15"><Edit3 className="size-4"/>Изменить</button>
         <button onClick={() => onToggleHidden(tour)} className={`grid size-11 shrink-0 place-items-center rounded-xl ${tour.isHidden ? 'bg-brand/10 text-brand-dark hover:bg-brand/20' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`} aria-label={`${tour.isHidden ? 'Показать' : 'Скрыть'} ${tour.hotel}`}>{tour.isHidden ? <Eye className="size-4"/> : <EyeOff className="size-4"/>}</button>
         <button onClick={() => onRemove(tour)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100" aria-label={`Удалить ${tour.hotel}`}><Trash2 className="size-4"/></button>

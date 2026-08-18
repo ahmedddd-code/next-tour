@@ -13,7 +13,7 @@ export function extractOperatorImages(text: string, base: string) {
     .replaceAll('\\/', '/').replaceAll('&quot;', '"').replaceAll('&amp;', '&');
   return [...new Set([...decoded.matchAll(/((?:https?:)?\/\/[^"')\s<>]+\.(?:jpe?g|webp|png)(?:\?[^"')\s<>]*)?|\/[^"')\s<>]+\.(?:jpe?g|webp|png)(?:\?[^"')\s<>]*)?)/gi)].map(match => {
     try { return new URL(match[1], base).href; } catch { return ''; }
-  }).filter(image => image && !/logo|icon|flag|banner|hotelparam|loader|sprite|\/www\.(?:jpe?g|webp|png)\//i.test(image)))];
+  }).filter(image => image && !/logo|icon|flag|banner|hotelparam|loader|sprite|placeholder|no[-_]?photo|\/data\/search_tour\/prt_\d+_\d+\.png|\/www\.(?:jpe?g|webp|png)\//i.test(image)))];
 }
 
 function originalPegasImage(image: string) {
