@@ -15,14 +15,15 @@ export function BookingModal({ tour, onClose }: Props) {
   const [phoneDigits, setPhoneDigits] = useState(() => extractPhoneDigits(profile?.phone ?? ''));
   const [email, setEmail] = useState(() => profile?.email ?? '');
   const [tripDate, setTripDate] = useState('');
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(0);
+  const [adults, setAdults] = useState('2');
+  const [children, setChildren] = useState('0');
   const [comment, setComment] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [sent, setSent] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const inputClass = 'h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-navy outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10';
+  const normalizeCount = (value: string) => value === '' ? '' : String(Number(value));
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -37,7 +38,7 @@ export function BookingModal({ tour, onClose }: Props) {
     if (phoneDigits.length !== 10) { setPhoneError('Введите 10 цифр номера телефона.'); return; }
     setSubmitting(true); setSubmitError('');
     try {
-      await addBooking({ tourId: tour.id, tourHotel: tour.hotel, tourDestination: `${tour.country}, ${tour.resort}`, tourPrice: tour.price, name: name.trim(), phone: formatPhone(phoneDigits), email: email.trim(), tripDate, adults, children, comment: comment.trim(), partnerSource: tour.partnerSource, externalOfferId: tour.externalOfferId, sourceUrl: tour.sourceUrl, priceCheckedAt: tour.priceCheckedAt, sourcePrice: tour.sourcePrice, sourceCurrency: tour.sourceCurrency });
+      await addBooking({ tourId: tour.id, tourHotel: tour.hotel, tourDestination: `${tour.country}, ${tour.resort}`, tourPrice: tour.price, name: name.trim(), phone: formatPhone(phoneDigits), email: email.trim(), tripDate, adults: Number(adults), children: Number(children || 0), comment: comment.trim(), partnerSource: tour.partnerSource, externalOfferId: tour.externalOfferId, sourceUrl: tour.sourceUrl, priceCheckedAt: tour.priceCheckedAt, sourcePrice: tour.sourcePrice, sourceCurrency: tour.sourceCurrency });
       setSent(true);
     } catch { setSubmitError('Не удалось отправить заявку. Проверьте интернет и попробуйте ещё раз.'); }
     finally { setSubmitting(false); }
@@ -58,8 +59,8 @@ export function BookingModal({ tour, onClose }: Props) {
           <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Телефон *</span><input required type="tel" inputMode="numeric" value={formatPhone(phoneDigits)} onChange={event => { setPhoneDigits(extractPhoneDigits(event.target.value)); setPhoneError(''); }} className={inputClass}/>{phoneError && <span className="mt-1 block text-xs font-bold text-red-500">{phoneError}</span>}</label>
           <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Email *</span><input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@example.com" className={inputClass}/></label>
           <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Дата поездки</span><input type="date" min={new Date().toISOString().slice(0, 10)} value={tripDate} onChange={event => setTripDate(event.target.value)} className={inputClass}/></label>
-          <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Взрослые</span><input required type="number" min="1" max="20" value={adults} onChange={event => setAdults(Number(event.target.value))} className={inputClass}/></label>
-          <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Дети</span><input required type="number" min="0" max="20" value={children} onChange={event => setChildren(Number(event.target.value))} className={inputClass}/></label>
+          <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Взрослые</span><input required type="number" min="1" max="20" value={adults} onChange={event => setAdults(normalizeCount(event.target.value))} className={inputClass}/></label>
+          <label><span className="mb-1.5 block text-xs font-bold text-slate-500">Дети</span><input required type="number" min="0" max="20" value={children} onChange={event => setChildren(normalizeCount(event.target.value))} className={inputClass}/></label>
           <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-bold text-slate-500">Комментарий</span><textarea rows={3} value={comment} onChange={event => setComment(event.target.value)} placeholder="Дополнительные пожелания" className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm font-semibold text-navy outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10"/></label>
         </div>
         {submitError && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-600">{submitError}</p>}
