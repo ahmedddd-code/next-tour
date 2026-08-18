@@ -1,9 +1,9 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
+import { AuthModal } from './components/AuthModal';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { HomeShortcut } from './components/HomeShortcut';
-import { PageTransitionShade } from './components/PageTransitionShade';
 import { ScreamerShortcut } from './components/ScreamerShortcut';
 import { ScrollManager } from './components/ScrollManager';
 import { useAuth } from './hooks/useAuth';
@@ -23,7 +23,6 @@ const AdminPage = page(() => import('./pages/AdminPage'), 'AdminPage');
 const ScreamerPage = page(() => import('./pages/ScreamerPage'), 'ScreamerPage');
 const GamePage = page(() => import('./pages/GamePage'), 'GamePage');
 const NotFoundPage = page(() => import('./pages/NotFoundPage'), 'NotFoundPage');
-const AuthModal = page(() => import('./components/AuthModal'), 'AuthModal');
 
 function PageLoader() {
   return <div className="grid min-h-screen place-items-center bg-mist"><span className="size-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand" aria-label="Загрузка страницы"/></div>;
@@ -31,7 +30,7 @@ function PageLoader() {
 
 function AuthExperience() {
   const { modalOpen, registrationSuccess } = useAuth();
-  return modalOpen || registrationSuccess ? <Suspense fallback={null}><AuthModal/></Suspense> : null;
+  return modalOpen || registrationSuccess ? <AuthModal/> : null;
 }
 
 function PublicOverlays() {
@@ -42,7 +41,7 @@ function PublicOverlays() {
 }
 
 export default function App() {
-  return <><ScreamerShortcut/><ScrollManager/><PageTransitionShade/><Suspense fallback={<PageLoader/>}><Routes>
+  return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes>
     <Route path="/" element={<HomePage/>}/><Route path="/search" element={<SearchPage/>}/><Route path="/destinations" element={<DestinationsPage/>}/><Route path="/ai" element={<AiPage/>}/><Route path="/reviews" element={<ReviewsPage/>}/><Route path="/contacts" element={<ContactsPage/>}/>
     <Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="/game" element={<GamePage/>}/><Route path="*" element={<NotFoundPage/>}/>
   </Routes></Suspense><HomeShortcut/><PublicOverlays/><AuthExperience/></>;

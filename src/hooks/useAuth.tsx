@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const action = pendingAction.current;
     pendingAction.current = null;
-    window.setTimeout(() => action?.(), 120);
+    action?.();
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
