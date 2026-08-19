@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { DepartureCityDialogs } from './components/DepartureCityDialogs';
-import { CompareShortcut } from './components/CompareShortcut';
 import { AuthModal } from './components/AuthModal';
 import { FloatingSupportWidget } from './components/FloatingSupportWidget';
 import { HomeShortcut } from './components/HomeShortcut';
@@ -13,7 +12,6 @@ const page = <T extends object>(loader: () => Promise<T>, name: keyof T) => lazy
 const HomePage = page(() => import('./pages/HomePage'), 'HomePage');
 const ToursPage = page(() => import('./pages/ToursPage'), 'ToursPage');
 const TourPage = page(() => import('./pages/TourPage'), 'TourPage');
-const SearchPage = page(() => import('./pages/SearchPage'), 'SearchPage');
 const DestinationsPage = page(() => import('./pages/DestinationsPage'), 'DestinationsPage');
 const AiPage = page(() => import('./pages/AiPage'), 'AiPage');
 const ReviewsPage = page(() => import('./pages/ReviewsPage'), 'ReviewsPage');
@@ -37,13 +35,13 @@ function AuthExperience() {
 function PublicOverlays() {
   const { pathname } = useLocation();
   if (pathname.startsWith('/admin') || pathname === '/screamer' || pathname === '/game') return null;
-  const travelPage = ['/', '/tours', '/search', '/destinations'].includes(pathname) || pathname.startsWith('/tour/');
+  const travelPage = ['/', '/tours', '/destinations'].includes(pathname) || pathname.startsWith('/tour/');
   return <>{travelPage && <DepartureCityDialogs/>}{pathname !== '/chat' && <FloatingSupportWidget/>}</>;
 }
 
 export default function App() {
   return <><ScreamerShortcut/><ScrollManager/><Suspense fallback={<PageLoader/>}><Routes>
-    <Route path="/" element={<HomePage/>}/><Route path="/search" element={<SearchPage/>}/><Route path="/destinations" element={<DestinationsPage/>}/><Route path="/ai" element={<AiPage/>}/><Route path="/reviews" element={<ReviewsPage/>}/><Route path="/contacts" element={<ContactsPage/>}/>
+    <Route path="/" element={<HomePage/>}/><Route path="/search" element={<Navigate replace to="/tours"/>}/><Route path="/destinations" element={<DestinationsPage/>}/><Route path="/ai" element={<AiPage/>}/><Route path="/reviews" element={<ReviewsPage/>}/><Route path="/contacts" element={<ContactsPage/>}/>
     <Route path="/tours" element={<ToursPage/>}/><Route path="/tour/:id" element={<TourPage/>}/><Route path="/chat" element={<ChatPage/>}/><Route path="/account" element={<AccountPage/>}/><Route path="/admin" element={<AdminPage/>}/><Route path="/screamer" element={<ScreamerPage/>}/><Route path="/game" element={<GamePage/>}/><Route path="*" element={<NotFoundPage/>}/>
-  </Routes></Suspense><CompareShortcut/><HomeShortcut/><PublicOverlays/><AuthExperience/></>;
+  </Routes></Suspense><HomeShortcut/><PublicOverlays/><AuthExperience/></>;
 }

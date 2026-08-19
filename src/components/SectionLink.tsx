@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 type Props = { section: string; children: ReactNode; className?: string; onNavigate?: () => void };
 
 const sectionRoutes: Record<string, string> = {
-  search: '/search',
+  search: '/tours',
   hot: '/tours',
   destinations: '/destinations',
   ai: '/ai',

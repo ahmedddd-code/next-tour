@@ -9,6 +9,7 @@ import { TourComparison } from '../components/TourComparison';
 import { useTours } from '../hooks/useTours';
 import { useDepartureCity } from '../hooks/useDepartureCity';
 import { cityInGenitive } from '../data/kazakhstanCities';
+import { CompareShortcut } from '../components/CompareShortcut';
 
 export function ToursPage() {
   const { allTours: tours } = useTours();
@@ -37,10 +38,10 @@ export function ToursPage() {
           <span className="ml-1">Из {cityInGenitive(city)} доступно {cityTours.length}, остальные варианты также остаются в каталоге.</span>
         </div>
         <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center"><p className="text-sm text-slate-500">Найдено <strong className="text-navy">{filteredTours.length}</strong> предложений</p><select value={filters.sort} onChange={e => setFilters(current => ({ ...current, sort: e.target.value as SortOption }))} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-navy outline-none focus:border-brand"><option value="popularity">По популярности</option><option value="price-asc">Сначала дешевле</option><option value="price-desc">Сначала дороже</option><option value="rating">По рейтингу</option></select></div>
-        <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3 2xl:gap-6">{filteredTours.map(tour => <TourCard key={tour.id} tour={tour}/>)}</div>
+        <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3 2xl:gap-6">{filteredTours.map(tour => <TourCard key={tour.id} tour={tour} comparisonEnabled/>)}</div>
         {filteredTours.length === 0 && <div className="rounded-3xl bg-white px-6 py-20 text-center"><p className="text-xl font-black">Подходящих туров пока нет</p><p className="mt-2 text-slate-500">Попробуйте изменить параметры поиска.</p></div>}
       </section>
     </div>
-    <Footer/>
+    <CompareShortcut/><Footer/>
   </main>;
 }
