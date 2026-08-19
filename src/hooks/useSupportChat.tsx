@@ -26,16 +26,41 @@ type ContextValue = {
 };
 
 const SupportChatContext = createContext<ContextValue | null>(null);
-const refreshInterval = () => 1000;
+const refreshInterval = () => 4000;
 
 function loadCredentials() {
   try { const saved = localStorage.getItem(CREDENTIALS_KEY); return saved ? JSON.parse(saved) as ChatCredentials : null; }
   catch { return null; }
 }
 
+function saveCredentials(credentials: ChatCredentials | null) {
+  try {
+    if (credentials) localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
+    else localStorage.removeItem(CREDENTIALS_KEY);
+  } catch {
+    // The chat still works when storage is unavailable (for example in private mode).
+  }
+}
+
+function readableError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : '';
+  if (/failed to fetch|network|load failed/i.test(message) || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+    return 'Нет связи с сервером чата. Проверьте подключение и попробуйте ещё раз.';
+  }
+  if (/unauthorized|jwt|401/i.test(message)) return 'Сессия чата устарела. Обновите страницу и попробуйте ещё раз.';
+  return message && !/edge function returned/i.test(message) ? message : fallback;
+}
+
 async function invoke(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('support-chat', { body });
-  if (error) throw error;
+  if (error) {
+    const context = 'context' in error ? error.context : null;
+    if (context instanceof Response) {
+      const payload = await context.clone().json().catch(() => null) as { error?: unknown } | null;
+      if (payload?.error) throw new Error(String(payload.error));
+    }
+    throw error;
+  }
   if (data?.error) throw new Error(String(data.error));
   return data as Record<string, unknown>;
 }
@@ -47,6 +72,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const [pendingUserMessages, setPendingUserMessages] = useState<SupportMessage[]>([]);
   const lastTypingUpdate = useRef(0);
+  const failedRefreshes = useRef(0);
 
   const loadUserConversation = useCallback(async (chatCredentials = credentials) => {
     if (!isSupabaseConfigured || !chatCredentials) return;
@@ -54,14 +80,18 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       const data = await invoke({ action: 'user_load', ...chatCredentials });
       const conversation = data.conversation as SupportConversation | null;
       if (!conversation) {
-        localStorage.removeItem(CREDENTIALS_KEY);
+        saveCredentials(null);
         setCredentials(null);
       }
       const next = conversation ? [conversation] : [];
       setConversations(current => JSON.stringify(current) === JSON.stringify(next) ? current : next);
       setLoaded(true);
+      failedRefreshes.current = 0;
       setError('');
-    } catch { setError('Не удалось обновить чат. Проверьте интернет-соединение.'); }
+    } catch (caught) {
+      failedRefreshes.current += 1;
+      if (failedRefreshes.current >= 3) setError(readableError(caught, 'Сервис чата временно недоступен. Попробуйте ещё раз позже.'));
+    }
   }, [credentials]);
 
   const loadAdminConversations = useCallback(async () => {
@@ -84,13 +114,13 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
   const setUserTyping = useCallback((typing: boolean) => {
     if (!credentials || (typing && Date.now() - lastTypingUpdate.current < 1500)) return;
     lastTypingUpdate.current = Date.now();
-    void invoke({ action: 'user_typing', ...credentials, typing });
+    void invoke({ action: 'user_typing', ...credentials, typing }).catch(() => undefined);
   }, [credentials]);
 
   const setManagerTyping = useCallback((conversationId: string, typing: boolean) => {
     if (typing && Date.now() - lastTypingUpdate.current < 1500) return;
     lastTypingUpdate.current = Date.now();
-    void invoke({ action: 'admin_typing', adminToken: getAdminToken(), conversationId, typing });
+    void invoke({ action: 'admin_typing', adminToken: getAdminToken(), conversationId, typing }).catch(() => undefined);
   }, []);
 
   const value = useMemo<ContextValue>(() => ({
@@ -99,7 +129,7 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
     error,
     pendingUserMessages,
     startNewConversation: () => {
-      localStorage.removeItem(CREDENTIALS_KEY);
+      saveCredentials(null);
       setCredentials(null);
       setConversations([]);
       setPendingUserMessages([]);
@@ -111,11 +141,11 @@ export function SupportChatProvider({ children }: { children: ReactNode }) {
       try {
         const data = await invoke({ action: 'user_send', text, contact, ...credentials });
         const nextCredentials: ChatCredentials = { conversationId: String(data.conversationId), accessToken: String(data.accessToken) };
-        localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(nextCredentials));
+        saveCredentials(nextCredentials);
         setCredentials(nextCredentials);
         await loadUserConversation(nextCredentials);
         setPendingUserMessages(current => current.filter(message => message.id !== pending.id));
-      } catch { setPendingUserMessages(current => current.filter(message => message.id !== pending.id)); setError('Не удалось отправить сообщение. Проверьте подключение к интернету или попробуйте позже.'); throw new Error('support-send-failed'); }
+      } catch (caught) { setPendingUserMessages(current => current.filter(message => message.id !== pending.id)); setError(readableError(caught, 'Не удалось отправить сообщение. Попробуйте ещё раз позже.')); throw caught; }
     },
     respondToCloseRequest: async resolved => {
       if (!credentials) throw new Error('support-conversation-not-found');
