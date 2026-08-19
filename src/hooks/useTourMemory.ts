@@ -5,14 +5,24 @@ const FAVORITES_KEY = 'nexttour:favorites:v1';
 const RECENT_KEY = 'nexttour:recent:v1';
 const COMPARE_KEY = 'nexttour:compare:v1';
 const CHANGE_EVENT = 'nexttour:memory-change';
+const memoryFallback = new Map<string, unknown>();
 
 function read<T>(key: string, fallback: T): T {
-  try { return JSON.parse(localStorage.getItem(key) ?? '') as T; } catch { return fallback; }
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      const value = JSON.parse(saved) as T;
+      memoryFallback.set(key, value);
+      return value;
+    }
+  } catch { /* На телефонах хранилище может быть отключено. */ }
+  return (memoryFallback.get(key) as T | undefined) ?? fallback;
 }
 
 function write(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
-  window.dispatchEvent(new Event(CHANGE_EVENT));
+  memoryFallback.set(key, value);
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Состояние останется в памяти до закрытия вкладки. */ }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 export function useFavorites() {

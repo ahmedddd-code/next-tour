@@ -25,7 +25,7 @@ function loadSavedCity() {
     const saved = JSON.parse(value) as SavedCity;
     if (saved.expiresAt > Date.now() && kazakhstanCities.some(city => city.name === saved.city)) return saved.city;
     localStorage.removeItem(STORAGE_KEY);
-  } catch { localStorage.removeItem(STORAGE_KEY); }
+  } catch { /* В приватном режиме хранилище может быть недоступно. */ }
   return null;
 }
 
@@ -71,7 +71,7 @@ export function DepartureCityProvider({ children }: { children: ReactNode }) {
   }, [selectedCity]);
 
   const selectCity = (city: string) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ city, expiresAt: Date.now() + THIRTY_DAYS } satisfies SavedCity));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ city, expiresAt: Date.now() + THIRTY_DAYS } satisfies SavedCity)); } catch { /* Выбор всё равно сохраняется до закрытия вкладки. */ }
     setSelectedCity(city);
     setDetectedCity(city);
     setConfirmationOpen(false);
