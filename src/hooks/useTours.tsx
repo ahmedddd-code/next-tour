@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { tours as defaultTours, type Tour } from '../data/tours';
+import type { Tour } from '../data/tours';
 import { hasUsablePartnerPhotos, withUniqueTourCovers } from '../utils/tourImages';
 import { useAutoRefresh } from './useAutoRefresh';
 
@@ -8,13 +8,14 @@ const ToursContext = createContext<ToursContextValue | null>(null);
 const refreshInterval = () => 5 * 60 * 1000;
 const CACHE_KEY = 'nexttour:partner-catalog:v1';
 const PAGE_SIZE = 100;
+const isVerifiedPartnerTour = (tour: Tour) => Boolean(tour.partnerSource && tour.externalOfferId);
 
 function cachedTours() {
   try {
     const value = localStorage.getItem(CACHE_KEY);
     const parsed = value ? JSON.parse(value) as unknown : null;
-    return withUniqueTourCovers((Array.isArray(parsed) && parsed.length ? parsed as Tour[] : defaultTours).filter(hasUsablePartnerPhotos));
-  } catch { return withUniqueTourCovers(defaultTours); }
+    return withUniqueTourCovers((Array.isArray(parsed) ? parsed as Tour[] : []).filter(tour => isVerifiedPartnerTour(tour) && hasUsablePartnerPhotos(tour)));
+  } catch { return []; }
 }
 
 function cacheTours(tours: Tour[]) {
@@ -38,7 +39,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
         const page = data.tours as Tour[];
         cloudTours.push(...page);
         if (cloudTours.length) {
-          const visibleTours = withUniqueTourCovers(cloudTours.filter(hasUsablePartnerPhotos));
+          const visibleTours = withUniqueTourCovers(cloudTours.filter(tour => isVerifiedPartnerTour(tour) && hasUsablePartnerPhotos(tour)));
           setTours(visibleTours);
           cacheTours(visibleTours);
         }
@@ -49,7 +50,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
   }, []);
   const loadAdminTours = useCallback(async () => {
     const data = await invokeToursData({ action: 'admin_list_tours' }, true);
-    setAdminTours((data.tours as Tour[]).filter(hasUsablePartnerPhotos));
+    setAdminTours((data.tours as Tour[]).filter(tour => isVerifiedPartnerTour(tour) && hasUsablePartnerPhotos(tour)));
   }, []);
   useAutoRefresh(load, refreshInterval);
   const reloadAll = async () => { await Promise.all([load(), loadAdminTours()]); };
@@ -79,7 +80,7 @@ export function ToursProvider({ children }: { children: ReactNode }) {
     tours, allTours: tours, adminTours, addTour: save, updateTour: save, loadAdminTours,
     setTourHidden,
     deleteTour: async id => { await invokeToursData({ action: 'admin_delete_tour', id }, true); await reloadAll(); },
-    resetTours: async () => { await invokeToursData({ action: 'admin_reset_tours', tours: defaultTours }, true); await reloadAll(); },
+    resetTours: async () => { await reloadAll(); },
   }), [tours, adminTours, load, loadAdminTours]);
   return <ToursContext.Provider value={value}>{children}</ToursContext.Provider>;
 }
