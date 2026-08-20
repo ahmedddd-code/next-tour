@@ -33,7 +33,7 @@ export function filterAndSortTours(items: Tour[], filters: TourFilters) {
 export function CatalogFilters({ filters, countries, maxAvailablePrice, resultCount, onChange }: Props) {
   const update = <K extends keyof TourFilters>(key: K, value: TourFilters[K]) => onChange({ ...filters, [key]: value });
   const inputClass = 'h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-navy outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/10';
-  return <aside className="rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_40px_rgba(7,29,52,.07)] lg:sticky lg:top-6">
+  return <aside className="rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_12px_40px_rgba(7,29,52,.07)] lg:sticky lg:top-6 lg:self-start">
     <div className="mb-5 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-black"><SlidersHorizontal className="size-5 text-brand"/>Фильтры</h2><span className="rounded-full bg-mist px-3 py-1 text-xs font-bold text-brand-dark">{resultCount} туров</span></div>
     <div className="space-y-5">
       <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-400">Поиск</span><div className="relative"><Search className="absolute left-3 top-3.5 size-4 text-slate-400"/><input value={filters.query} onChange={e => update('query', e.target.value)} placeholder="Отель или курорт" className={`${inputClass} pl-10`}/></div></label>
